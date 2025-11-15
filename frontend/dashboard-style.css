@@ -1158,3 +1158,129 @@ body.modal-open {
         justify-content: center;
     }
 }
+
+/* ========== Multiple Upload Results ========== */
+.upload-summary {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    border-radius: 12px;
+}
+
+.summary-stat {
+    text-align: center;
+    padding: 15px 30px;
+    border-radius: 10px;
+    min-width: 120px;
+}
+
+.success-stat {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border: 2px solid var(--success);
+}
+
+.error-stat {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border: 2px solid var(--danger);
+}
+
+.stat-number {
+    display: block;
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 5px;
+}
+
+.success-stat .stat-number {
+    color: var(--success);
+}
+
+.error-stat .stat-number {
+    color: var(--danger);
+}
+
+.stat-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dark);
+    opacity: 0.8;
+}
+
+.upload-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.upload-result-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    border-radius: 10px;
+    background: white;
+    border: 2px solid var(--border);
+    transition: all 0.3s ease;
+}
+
+.upload-result-item:hover {
+    transform: translateX(5px);
+    box-shadow: var(--shadow);
+}
+
+.success-item {
+    border-left: 4px solid var(--success);
+}
+
+.error-item {
+    border-left: 4px solid var(--danger);
+}
+
+.upload-result-item .item-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.upload-result-item .item-name {
+    flex: 1;
+    font-weight: 600;
+    color: var(--dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.upload-result-item .item-status {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.success-item .item-status {
+    background: var(--success);
+    color: white;
+}
+
+.error-item .item-status {
+    background: var(--danger);
+    color: white;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mixed-card .result-header {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-bottom: 2px solid var(--warning);
+}
+
+.mixed-card .result-header.warning .result-icon {
+    color: var(--warning);
+}

@@ -44,6 +44,11 @@
                 <div class="label">Videos</div>
             </div>
             <div class="stat-card">
+                <div class="icon">📄</div>
+                <div class="number" id="pdfCount">0</div>
+                <div class="label">PDFs</div>
+            </div>
+            <div class="stat-card">
                 <div class="icon">📊</div>
                 <div class="number" id="jsonCount">0</div>
                 <div class="label">JSON Files</div>
@@ -52,41 +57,45 @@
 
         <!-- Upload Section -->
         <div class="upload-card">
-            <h2>📤 Upload New Content</h2>
+            <h2>📤 Upload Files & Data</h2>
             
             <form id="uploadForm" method="POST" enctype="multipart/form-data">
-                <!-- File Upload Section -->
+                <!-- Unified File Upload Section -->
                 <div class="form-section">
-                    <label for="media_file" class="form-label">
-                        📁 Upload Media File
-                        <span class="label-hint">(Images or Videos)</span>
+                    <label for="unified_file" class="form-label">
+                        📁 Upload Files or Documents
+                        <span class="label-hint">(Select Multiple: Images, Videos, PDFs, or JSON)</span>
                     </label>
                     <div class="file-input-wrapper">
                         <input 
                             type="file" 
-                            id="media_file" 
-                            name="file" 
-                            accept="image/*,video/*"
+                            id="unified_file" 
+                            name="files" 
+                            accept="image/*,video/*,.pdf,application/pdf,.json,application/json"
                             class="file-input"
+                            multiple
                         >
-                        <label for="media_file" class="file-input-label">
+                        <label for="unified_file" class="file-input-label">
                             <span class="file-icon">📎</span>
-                            <span id="fileName">Choose a file...</span>
+                            <span id="fileName">Choose files...</span>
                         </label>
                     </div>
-                    <p class="input-hint">Supported: JPG, PNG, GIF, MP4, AVI, MOV, etc.</p>
+                    <p class="input-hint">
+                        📷 Images: JPG, PNG, GIF | 🎬 Videos: MP4, AVI, MOV | 📄 Documents: PDF | 📊 Data: JSON
+                        <br><strong>💡 Tip:</strong> Hold Ctrl (Windows) or Cmd (Mac) to select multiple files at once
+                    </p>
                 </div>
 
                 <!-- Divider -->
                 <div class="divider">
-                    <span>OR</span>
+                    <span>OR Paste JSON Data</span>
                 </div>
 
                 <!-- JSON Input Section -->
                 <div class="form-section">
                     <label for="json_text" class="form-label">
                         📊 JSON Structured Data
-                        <span class="label-hint">(Paste JSON content)</span>
+                        <span class="label-hint">(Paste JSON content directly)</span>
                     </label>
                     <textarea 
                         id="json_text" 
@@ -95,7 +104,7 @@
                         rows="6"
                         class="json-textarea"
                     ></textarea>
-                    <p class="input-hint">System will auto-detect SQL vs NoSQL classification</p>
+                    <p class="input-hint">System will auto-classify as SQL or NoSQL database</p>
                 </div>
 
                 <!-- Comment Section -->
@@ -147,6 +156,7 @@
                     <video id="modalVideo" controls style="display: none;">
                         <source id="modalVideoSource" src="" type="">
                     </video>
+                    <iframe id="modalPdf" src="" style="display: none; width: 100%; height: 70vh; border: none; border-radius: 8px;"></iframe>
                     <pre id="modalJson" style="display: none;"></pre>
                 </div>
                 <div class="modal-footer">
@@ -171,6 +181,7 @@
             const modalImage = document.getElementById('modalImage');
             const modalVideo = document.getElementById('modalVideo');
             const modalVideoSource = document.getElementById('modalVideoSource');
+            const modalPdf = document.getElementById('modalPdf');
             const modalJson = document.getElementById('modalJson');
             const modalTitle = document.getElementById('modalTitle');
             const modalDownload = document.getElementById('modalDownload');
@@ -178,6 +189,7 @@
             // Hide all content types first
             modalImage.style.display = 'none';
             modalVideo.style.display = 'none';
+            modalPdf.style.display = 'none';
             modalJson.style.display = 'none';
 
             // Set download link
@@ -195,6 +207,10 @@
                 modalVideo.load();
                 modalVideo.style.display = 'block';
                 modalTitle.textContent = '🎬 ' + filename;
+            } else if (fileType === 'pdf') {
+                modalPdf.src = fileUrl;
+                modalPdf.style.display = 'block';
+                modalTitle.textContent = '📄 ' + filename;
             } else if (fileType === 'json') {
                 fetch(fileUrl, { credentials: 'include' })
                     .then(res => res.json())
@@ -280,6 +296,7 @@
                 
                 document.getElementById('imageCount').textContent = stats.total_images;
                 document.getElementById('videoCount').textContent = stats.total_videos;
+                document.getElementById('pdfCount').textContent = stats.total_pdfs || 0;
                 document.getElementById('jsonCount').textContent = stats.total_json;
                 
             } catch (error) {
@@ -303,10 +320,21 @@
             }
         }
 
-        // Display selected filename
-        document.getElementById('media_file').addEventListener('change', function(e) {
-            const fileName = e.target.files[0]?.name || 'Choose a file...';
-            document.getElementById('fileName').textContent = fileName;
+        // Display selected filenames
+        document.getElementById('unified_file').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                if (files.length === 1) {
+                    const fileSize = (files[0].size / 1024).toFixed(2); // KB
+                    document.getElementById('fileName').textContent = `${files[0].name} (${fileSize} KB)`;
+                } else {
+                    const totalSize = Array.from(files).reduce((sum, f) => sum + f.size, 0);
+                    const totalSizeKB = (totalSize / 1024).toFixed(2);
+                    document.getElementById('fileName').textContent = `${files.length} files selected (${totalSizeKB} KB total)`;
+                }
+            } else {
+                document.getElementById('fileName').textContent = 'Choose files...';
+            }
         });
 
         // Handle form submission
@@ -315,44 +343,126 @@
 
             const resultDiv = document.getElementById('result');
             resultDiv.style.display = 'block';
-            resultDiv.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Processing your upload...</p>
-                </div>
-            `;
+            
+            const fileInput = document.getElementById('unified_file');
+            const files = fileInput.files;
+            const jsonData = document.getElementById('json_text').value.trim();
+            const comment = document.getElementById('comment').value.trim();
 
-            try {
-                const formData = new FormData(this);
+            // Check if we have files to upload
+            if (files.length > 0) {
+                // Multiple file upload
+                resultDiv.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Uploading ${files.length} file(s)...</p>
+                    </div>
+                `;
 
-                const response = await fetch('http://127.0.0.1:5000/upload', {
-                    method: 'POST',
-                    credentials: 'include',
-                    body: formData
-                });
+                const results = [];
+                let successCount = 0;
+                let errorCount = 0;
 
-                const data = await response.json();
+                // Upload each file individually
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('comment', comment);
 
-                if (response.ok) {
-                    displaySuccess(data);
-                    // Reload stats after successful upload
-                    loadDashboardStats();
-                } else {
-                    displayError(data);
+                    try {
+                        const response = await fetch('http://127.0.0.1:5000/upload', {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                        });
+
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            successCount++;
+                            results.push({ success: true, data, filename: file.name });
+                        } else {
+                            errorCount++;
+                            results.push({ success: false, error: data, filename: file.name });
+                        }
+                    } catch (error) {
+                        errorCount++;
+                        results.push({ success: false, error: { message: error.message }, filename: file.name });
+                    }
+
+                    // Update progress
+                    resultDiv.innerHTML = `
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Uploading... ${i + 1} of ${files.length} files</p>
+                        </div>
+                    `;
                 }
 
-            } catch (error) {
+                // Display results summary
+                displayMultipleResults(results, successCount, errorCount);
+                
+                // Reload stats after upload
+                loadDashboardStats();
+
+            } else if (jsonData) {
+                // Single JSON upload
+                resultDiv.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Processing your upload...</p>
+                    </div>
+                `;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('json_data', jsonData);
+                    formData.append('comment', comment);
+
+                    const response = await fetch('http://127.0.0.1:5000/upload', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        displaySuccess(data);
+                        loadDashboardStats();
+                    } else {
+                        displayError(data);
+                    }
+
+                } catch (error) {
+                    resultDiv.innerHTML = `
+                        <div class="result-card error-card">
+                            <div class="result-header error">
+                                <span class="result-icon">❌</span>
+                                <h3>Connection Error</h3>
+                            </div>
+                            <div class="result-body">
+                                <p><strong>Error:</strong> ${error.message}</p>
+                            </div>
+                        </div>
+                    `;
+                    addCloseButton(resultDiv);
+                }
+            } else {
+                // No file or JSON provided
                 resultDiv.innerHTML = `
                     <div class="result-card error-card">
                         <div class="result-header error">
-                            <span class="result-icon">❌</span>
-                            <h3>Connection Error</h3>
+                            <span class="result-icon">⚠️</span>
+                            <h3>No Input Provided</h3>
                         </div>
                         <div class="result-body">
-                            <p><strong>Error:</strong> ${error.message}</p>
+                            <p>Please select file(s) or paste JSON data to upload.</p>
                         </div>
                     </div>
                 `;
+                addCloseButton(resultDiv);
             }
         });
 
@@ -362,12 +472,14 @@
             const typeIcons = {
                 'image': '🖼️',
                 'video': '🎬',
+                'pdf': '📄',
                 'json': '📊'
             };
             
             const storageIcons = {
                 'images': '🖼️',
                 'videos': '🎬',
+                'pdfs': '📄',
                 'sql': '🗄️',
                 'nosql': '📦'
             };
@@ -386,6 +498,7 @@
                 // Determine file type
                 if (data.input_type === 'image') fileType = 'image';
                 else if (data.input_type === 'video') fileType = 'video';
+                else if (data.input_type === 'pdf') fileType = 'pdf';
                 else if (data.input_type === 'json') fileType = 'json';
             }
 
@@ -471,6 +584,71 @@
             addCloseButton(resultDiv);
         }
 
+        function displayMultipleResults(results, successCount, errorCount) {
+            const resultDiv = document.getElementById('result');
+            
+            const typeIcons = {
+                'image': '🖼️',
+                'video': '🎬',
+                'pdf': '📄',
+                'json': '📊'
+            };
+
+            let successItems = '';
+            let errorItems = '';
+
+            results.forEach(result => {
+                if (result.success) {
+                    const icon = typeIcons[result.data.input_type] || '📄';
+                    successItems += `
+                        <div class="upload-result-item success-item">
+                            <span class="item-icon">${icon}</span>
+                            <span class="item-name">${result.filename}</span>
+                            <span class="item-status">✅ Success</span>
+                        </div>
+                    `;
+                } else {
+                    errorItems += `
+                        <div class="upload-result-item error-item">
+                            <span class="item-icon">❌</span>
+                            <span class="item-name">${result.filename}</span>
+                            <span class="item-status">${result.error.message || result.error.error || 'Failed'}</span>
+                        </div>
+                    `;
+                }
+            });
+
+            resultDiv.innerHTML = `
+                <div class="result-card ${errorCount > 0 ? 'mixed-card' : 'success-card'}">
+                    <div class="result-header ${errorCount > 0 ? 'warning' : 'success'}">
+                        <span class="result-icon">${errorCount > 0 ? '⚠️' : '✅'}</span>
+                        <h3>Upload Complete</h3>
+                    </div>
+                    <div class="result-body">
+                        <div class="upload-summary">
+                            <div class="summary-stat success-stat">
+                                <span class="stat-number">${successCount}</span>
+                                <span class="stat-label">Successful</span>
+                            </div>
+                            ${errorCount > 0 ? `
+                            <div class="summary-stat error-stat">
+                                <span class="stat-number">${errorCount}</span>
+                                <span class="stat-label">Failed</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        <div class="upload-results-list">
+                            ${successItems}
+                            ${errorItems}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            addCloseButton(resultDiv);
+        }
+
         function addCloseButton(resultDiv) {
             if (resultDiv.querySelector('.close-result-btn')) return;
             
@@ -489,7 +667,7 @@
 
         function clearForm() {
             document.getElementById('uploadForm').reset();
-            document.getElementById('fileName').textContent = 'Choose a file...';
+            document.getElementById('fileName').textContent = 'Choose files...';
         }
 
         async function retrieveData() {
@@ -507,6 +685,7 @@
                 const getFileIcon = (filename, type) => {
                     if (type === 'images') return '🖼️';
                     if (type === 'videos') return '🎬';
+                    if (type === 'pdfs') return '📄';
                     if (type === 'json') return '📊';
                     return '📄';
                 };
@@ -527,7 +706,9 @@
                             ${files.map(file => {
                                 const viewUrl = `http://127.0.0.1:5000/storage/${currentUser.username}/${folderName}/${file}`;
                                 const downloadUrl = `http://127.0.0.1:5000/download/${currentUser.username}/${folderName}/${file}`;
-                                const fileType = type === 'images' ? 'image' : (type === 'videos' ? 'video' : 'json');
+                                const fileType = type === 'images' ? 'image' : 
+                                                (type === 'videos' ? 'video' : 
+                                                (type === 'pdfs' ? 'pdf' : 'json'));
                                 
                                 return `
                                 <div class="file-item-row">
@@ -581,6 +762,16 @@
                                         <span class="file-count">${data.videos.length}</span>
                                     </div>
                                     ${createFileList(data.videos, 'videos', 'videos')}
+                                </div>
+
+                                <!-- PDFs Section -->
+                                <div class="file-category-section">
+                                    <div class="file-category-header">
+                                        <span class="file-category-icon">📄</span>
+                                        <h4 class="file-category-title">PDF Documents</h4>
+                                        <span class="file-count">${data.pdfs ? data.pdfs.length : 0}</span>
+                                    </div>
+                                    ${createFileList(data.pdfs || [], 'pdfs', 'pdfs')}
                                 </div>
 
                                 <!-- JSON Data Section -->

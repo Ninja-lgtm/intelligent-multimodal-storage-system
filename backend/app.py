@@ -55,6 +55,7 @@ USERS_DB = os.path.join(STORAGE_BASE, 'users.json')
 # Allowed file extensions for validation
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm'}
+ALLOWED_PDF_EXTENSIONS = {'pdf'}
 
 
 def create_storage_folders():
@@ -129,8 +130,30 @@ def allowed_file(filename, file_type):
         return extension in ALLOWED_IMAGE_EXTENSIONS
     elif file_type == 'video':
         return extension in ALLOWED_VIDEO_EXTENSIONS
+    elif file_type == 'pdf':
+        return extension in ALLOWED_PDF_EXTENSIONS
     
     return False
+
+
+def detect_file_type(filename):
+    """
+    Auto-detect file type based on extension.
+    Returns: 'image', 'video', 'pdf', or None
+    """
+    if '.' not in filename:
+        return None
+    
+    extension = filename.rsplit('.', 1)[1].lower()
+    
+    if extension in ALLOWED_IMAGE_EXTENSIONS:
+        return 'image'
+    elif extension in ALLOWED_VIDEO_EXTENSIONS:
+        return 'video'
+    elif extension in ALLOWED_PDF_EXTENSIONS:
+        return 'pdf'
+    
+    return None
 
 
 def classify_json_storage(json_data):
@@ -413,10 +436,44 @@ def upload():
                     'message': f'Video uploaded successfully to your personal storage.'
                 }), 200
             
+            # Handle PDF files
+            elif mime_type == 'application/pdf' or file.filename.lower().endswith('.pdf'):
+                if not allowed_file(file.filename, 'pdf'):
+                    return jsonify({
+                        'error': 'Invalid PDF format',
+                        'message': 'Only PDF files are accepted.'
+                    }), 400
+                
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = secure_filename(file.filename)
+                unique_filename = f"{timestamp}_{filename}"
+                
+                folder = get_user_storage_path(username, 'pdfs')
+                filepath = os.path.join(folder, unique_filename)
+                file.save(filepath)
+                
+                # Update user record
+                if 'pdfs' not in users[username]['uploads']:
+                    users[username]['uploads']['pdfs'] = []
+                users[username]['uploads']['pdfs'].append({
+                    'filename': unique_filename,
+                    'comment': comment,
+                    'uploaded_at': datetime.now().isoformat()
+                })
+                save_users(users)
+                
+                return jsonify({
+                    'input_type': 'pdf',
+                    'chosen_storage': 'pdfs',
+                    'comment_received': comment if comment else '',
+                    'filename': unique_filename,
+                    'message': f'PDF uploaded successfully to your personal storage.'
+                }), 200
+            
             else:
                 return jsonify({
                     'error': 'Unsupported file type',
-                    'message': f'Only images and videos are accepted. Received: {mime_type}'
+                    'message': f'Supported: images, videos, and PDFs. Received: {mime_type}'
                 }), 400
         
         # Handle JSON data
@@ -495,11 +552,13 @@ def retrieve_data():
         images_folder = get_user_storage_path(username, 'images')
         videos_folder = get_user_storage_path(username, 'videos')
         json_folder = get_user_storage_path(username, 'json_data')
+        pdfs_folder = get_user_storage_path(username, 'pdfs')
         
         result = {
             'images': os.listdir(images_folder) if os.path.exists(images_folder) else [],
             'videos': os.listdir(videos_folder) if os.path.exists(videos_folder) else [],
-            'json_data': os.listdir(json_folder) if os.path.exists(json_folder) else []
+            'json_data': os.listdir(json_folder) if os.path.exists(json_folder) else [],
+            'pdfs': os.listdir(pdfs_folder) if os.path.exists(pdfs_folder) else []
         }
         
         return jsonify(result), 200
@@ -534,7 +593,7 @@ def serve_file(username, folder, filename):
             }), 403
         
         # Validate folder path
-        if folder not in ['images', 'videos', 'json_data']:
+        if folder not in ['images', 'videos', 'json_data', 'pdfs']:
             return jsonify({
                 'error': 'Invalid folder',
                 'message': 'Invalid storage folder'
@@ -589,7 +648,7 @@ def download_file(username, folder, filename):
             }), 403
         
         # Validate folder
-        if folder not in ['images', 'videos', 'json_data']:
+        if folder not in ['images', 'videos', 'json_data', 'pdfs']:
             return jsonify({
                 'error': 'Invalid folder',
                 'message': 'Invalid storage folder'
@@ -650,6 +709,7 @@ def dashboard_stats():
         stats = {
             'total_images': len(uploads.get('images', [])),
             'total_videos': len(uploads.get('videos', [])),
+            'total_pdfs': len(uploads.get('pdfs', [])),
             'total_json': len(uploads.get('json_data', [])),
             'recent_uploads': []
         }
@@ -660,6 +720,8 @@ def dashboard_stats():
             all_uploads.append({**img, 'type': 'image'})
         for vid in uploads.get('videos', []):
             all_uploads.append({**vid, 'type': 'video'})
+        for pdf in uploads.get('pdfs', []):
+            all_uploads.append({**pdf, 'type': 'pdf'})
         for js in uploads.get('json_data', []):
             all_uploads.append({**js, 'type': 'json'})
         
