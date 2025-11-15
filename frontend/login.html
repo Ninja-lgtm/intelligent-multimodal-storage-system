@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Intelligent Multi-Modal Storage</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <!-- Login Form -->
+        <div class="auth-card" id="loginCard">
+            <div class="auth-header">
+                <h1>🎯 Welcome Back!</h1>
+                <p>Login to access your storage</p>
+            </div>
+
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input 
+                        type="text" 
+                        id="login-username" 
+                        name="username" 
+                        placeholder="Enter your username"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input 
+                        type="password" 
+                        id="login-password" 
+                        name="password" 
+                        placeholder="Enter your password"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="auth-btn">
+                    🚀 Login
+                </button>
+
+                <div class="auth-switch">
+                    Don't have an account? 
+                    <a href="#" onclick="showRegister(); return false;">Register here</a>
+                </div>
+            </form>
+
+            <div id="loginMessage" class="message-box" style="display: none;"></div>
+        </div>
+
+        <!-- Registration Form -->
+        <div class="auth-card" id="registerCard" style="display: none;">
+            <div class="auth-header">
+                <h1>🎯 Create Account</h1>
+                <p>Register to start uploading</p>
+            </div>
+
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="reg-fullname">Full Name</label>
+                    <input 
+                        type="text" 
+                        id="reg-fullname" 
+                        name="full_name" 
+                        placeholder="Enter your full name"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-username">Username *</label>
+                    <input 
+                        type="text" 
+                        id="reg-username" 
+                        name="username" 
+                        placeholder="Choose a username (min 3 chars)"
+                        required
+                        minlength="3"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-email">Email *</label>
+                    <input 
+                        type="email" 
+                        id="reg-email" 
+                        name="email" 
+                        placeholder="Enter your email"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-password">Password *</label>
+                    <input 
+                        type="password" 
+                        id="reg-password" 
+                        name="password" 
+                        placeholder="Create password (min 6 chars)"
+                        required
+                        minlength="6"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-confirm-password">Confirm Password *</label>
+                    <input 
+                        type="password" 
+                        id="reg-confirm-password" 
+                        name="confirm_password" 
+                        placeholder="Confirm your password"
+                        required
+                        minlength="6"
+                    >
+                </div>
+
+                <button type="submit" class="auth-btn">
+                    ✨ Register
+                </button>
+
+                <div class="auth-switch">
+                    Already have an account? 
+                    <a href="#" onclick="showLogin(); return false;">Login here</a>
+                </div>
+            </form>
+
+            <div id="registerMessage" class="message-box" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle between login and register forms
+        function showLogin() {
+            document.getElementById('loginCard').style.display = 'block';
+            document.getElementById('registerCard').style.display = 'none';
+            document.getElementById('loginMessage').style.display = 'none';
+            document.getElementById('registerMessage').style.display = 'none';
+        }
+
+        function showRegister() {
+            document.getElementById('loginCard').style.display = 'none';
+            document.getElementById('registerCard').style.display = 'block';
+            document.getElementById('loginMessage').style.display = 'none';
+            document.getElementById('registerMessage').style.display = 'none';
+        }
+
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            const messageBox = document.getElementById('loginMessage');
+
+            // Show loading
+            messageBox.style.display = 'block';
+            messageBox.className = 'message-box info';
+            messageBox.innerHTML = '⏳ Logging in...';
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // Important for session cookies
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageBox.className = 'message-box success';
+                    messageBox.innerHTML = '✅ ' + data.message + ' Redirecting...';
+                    
+                    // Redirect to dashboard after 1 second
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1000);
+                } else {
+                    messageBox.className = 'message-box error';
+                    messageBox.innerHTML = '❌ ' + data.message;
+                }
+            } catch (error) {
+                messageBox.className = 'message-box error';
+                messageBox.innerHTML = '❌ Connection error. Please ensure the server is running.';
+            }
+        });
+
+        // Handle registration form submission
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = {
+                full_name: document.getElementById('reg-fullname').value,
+                username: document.getElementById('reg-username').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value,
+                confirm_password: document.getElementById('reg-confirm-password').value
+            };
+
+            const messageBox = document.getElementById('registerMessage');
+
+            // Validate password match
+            if (formData.password !== formData.confirm_password) {
+                messageBox.style.display = 'block';
+                messageBox.className = 'message-box error';
+                messageBox.innerHTML = '❌ Passwords do not match!';
+                return;
+            }
+
+            // Show loading
+            messageBox.style.display = 'block';
+            messageBox.className = 'message-box info';
+            messageBox.innerHTML = '⏳ Creating your account...';
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageBox.className = 'message-box success';
+                    messageBox.innerHTML = '✅ ' + data.message + ' Redirecting to login...';
+                    
+                    // Clear form
+                    document.getElementById('registerForm').reset();
+                    
+                    // Switch to login after 2 seconds
+                    setTimeout(() => {
+                        showLogin();
+                        const loginMsg = document.getElementById('loginMessage');
+                        loginMsg.style.display = 'block';
+                        loginMsg.className = 'message-box success';
+                        loginMsg.innerHTML = '✅ Registration successful! Please login.';
+                    }, 2000);
+                } else {
+                    messageBox.className = 'message-box error';
+                    messageBox.innerHTML = '❌ ' + data.message;
+                }
+            } catch (error) {
+                messageBox.className = 'message-box error';
+                messageBox.innerHTML = '❌ Connection error. Please ensure the server is running.';
+            }
+        });
+
+        // Check if already logged in
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/check-session', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.logged_in) {
+                    // Already logged in, redirect to dashboard
+                    window.location.href = 'dashboard.html';
+                }
+            } catch (error) {
+                console.log('Not logged in');
+            }
+        });
+    </script>
+</body>
+</html>

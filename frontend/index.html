@@ -1,363 +1,251 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Intelligent Multi-Modal Storage System</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .landing-container {
+            text-align: center;
+            max-width: 800px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            font-size: 100px;
+            margin-bottom: 30px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            font-weight: 800;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            font-size: 22px;
+            margin-bottom: 50px;
+            opacity: 0.95;
+            line-height: 1.6;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .feature h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .feature p {
+            font-size: 15px;
+            opacity: 0.9;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 18px 40px;
+            font-size: 18px;
+            font-weight: 700;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .footer {
+            margin-top: 60px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 36px;
+            }
+
+            .subtitle {
+                font-size: 18px;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
-
 <body>
-    <!-- Main Container -->
-    <div class="container">
+    <div class="landing-container">
+        <div class="logo">🎯</div>
+        <h1>Intelligent Multi-Modal Storage</h1>
+        <p class="subtitle">
+            Securely store and classify your images, videos, and JSON data<br>
+            with smart SQL/NoSQL detection and user authentication
+        </p>
 
-        <!-- Title Banner -->
-        <header class="banner">
-            <h1>🎯 Intelligent Multi-Modal Storage System</h1>
-            <p class="subtitle">Upload Images, Videos, or JSON Data with Smart Classification</p>
-        </header>
-
-        <!-- Upload Form Card -->
-        <div class="card">
-            <form id="uploadForm" method="POST" action="http://127.0.0.1:5000/upload" enctype="multipart/form-data">
-
-                <!-- File Upload Section -->
-                <div class="form-section">
-                    <label for="media_file" class="form-label">
-                        📁 Upload Media File
-                        <span class="label-hint">(Images or Videos)</span>
-                    </label>
-                    <div class="file-input-wrapper">
-                        <input type="file" id="media_file" name="file" accept="image/*,video/*" class="file-input">
-                        <label for="media_file" class="file-input-label">
-                            <span class="file-icon">📎</span>
-                            <span id="fileName">Choose a file...</span>
-                        </label>
-                    </div>
-                    <p class="input-hint">Supported: JPG, PNG, GIF, MP4, AVI, MOV, etc.</p>
-                </div>
-
-                <!-- Divider -->
-                <div class="divider">
-                    <span>OR</span>
-                </div>
-
-                <!-- JSON Input Section -->
-                <div class="form-section">
-                    <label for="json_text" class="form-label">
-                        📊 JSON Structured Data
-                        <span class="label-hint">(Paste JSON content)</span>
-                    </label>
-                    <textarea id="json_text" name="json_data"
-                        placeholder='{"name": "John", "age": 25, "skills": ["Python", "AI"]}' rows="6"
-                        class="json-textarea"></textarea>
-                    <p class="input-hint">System will auto-detect SQL vs NoSQL classification</p>
-                </div>
-
-                <!-- Comment Section -->
-                <div class="form-section">
-                    <label for="comment" class="form-label">
-                        💬 Optional Comment
-                    </label>
-                    <input type="text" id="comment" name="comment" placeholder="Add metadata or description..."
-                        class="comment-input">
-                </div>
-
-                <!-- Submit Button -->
-                <button type="submit" class="submit-btn">
-                    <span class="btn-icon">🚀</span>
-                    Upload & Classify
-                </button>
-
-                <!-- Clear Form Button -->
-                <button type="button" class="clear-btn" onclick="clearForm()">
-                    Clear Form
-                </button>
-
-                <button type="button" class="retrieve-btn" onclick="retrieveData()">
-                    Retrieve Stored Data
-                </button>
-
-
-            </form>
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">🖼️</div>
+                <h3>Images</h3>
+                <p>Upload and store images in multiple formats</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🎬</div>
+                <h3>Videos</h3>
+                <p>Manage your video files securely</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <h3>JSON Data</h3>
+                <p>Auto-classify as SQL or NoSQL</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔒</div>
+                <h3>Secure</h3>
+                <p>User authentication & isolation</p>
+            </div>
         </div>
 
-        <!-- Result Display Area -->
-        <div id="result" class="result-container" style="display: none;">
-            <!-- Results will be dynamically inserted here -->
+        <div class="cta-buttons">
+            <a href="login.html" class="btn btn-primary">
+                🚀 Get Started
+            </a>
+            <a href="#" class="btn btn-secondary" onclick="showInfo(); return false;">
+                ℹ️ Learn More
+            </a>
         </div>
 
-        <!-- Footer Info -->
-        <footer class="footer">
-            <p>College Project • Intelligent Storage System • 2025</p>
-        </footer>
+        <div class="footer">
+            <p>College Project • Kumar Amityush • 2025</p>
+        </div>
     </div>
 
-    <!-- JavaScript for Form Handling -->
     <script>
-        // Display selected filename in custom file input
-        document.getElementById('media_file').addEventListener('change', function (e) {
-            const fileName = e.target.files[0]?.name || 'Choose a file...';
-            document.getElementById('fileName').textContent = fileName;
-        });
+        function showInfo() {
+            alert(`🎯 Intelligent Multi-Modal Storage System
 
-        // Handle form submission with AJAX
-        document.getElementById('uploadForm').addEventListener('submit', async function (e) {
-            // Prevent default form submission (page reload)
-            e.preventDefault();
+Features:
+✅ User Registration & Login
+✅ Secure File Storage
+✅ Image & Video Support
+✅ JSON Classification (SQL/NoSQL)
+✅ Personal User Dashboard
+✅ File Isolation & Privacy
 
-            // Get the result container
-            const resultDiv = document.getElementById('result');
+Click "Get Started" to begin!`);
+        }
 
-            // Show loading state
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Processing your upload...</p>
-                </div>
-            `;
-
+        // Auto-redirect if already logged in
+        window.addEventListener('load', async function() {
             try {
-                // Create FormData object from the form
-                const formData = new FormData(this);
-
-                // Send POST request to backend using Fetch API
-                const response = await fetch('http://127.0.0.1:5000/upload', {
-                    method: 'POST',
-                    body: formData
+                const response = await fetch('http://127.0.0.1:5000/check-session', {
+                    credentials: 'include'
                 });
-
-                // Parse JSON response from server
                 const data = await response.json();
-
-                // Check if request was successful
-                if (response.ok) {
-                    // Display SUCCESS result
-                    displaySuccess(data);
-                } else {
-                    // Display ERROR result
-                    displayError(data);
+                
+                if (data.logged_in) {
+                    window.location.href = 'dashboard.html';
                 }
-
             } catch (error) {
-                // Handle network errors or unexpected issues
-                resultDiv.innerHTML = `
-                    <div class="result-card error-card">
-                        <div class="result-header error">
-                            <span class="result-icon">❌</span>
-                            <h3>Connection Error</h3>
-                        </div>
-                        <div class="result-body">
-                            <p><strong>Error:</strong> ${error.message}</p>
-                            <p class="error-hint">Please ensure the backend server is running on http://127.0.0.1:5000</p>
-                        </div>
-                    </div>
-                `;
+                console.log('Not logged in');
             }
         });
-
-        /**
-         * Display successful upload result
-         * @param {Object} data - Response data from backend
-         */
-        function displaySuccess(data) {
-            const resultDiv = document.getElementById('result');
-
-            const typeIcons = {
-                'image': '🖼️',
-                'video': '🎬',
-                'json': '📊'
-            };
-
-            const storageIcons = {
-                'images': '🖼️',
-                'videos': '🎬',
-                'sql': '🗄️',
-                'nosql': '📦'
-            };
-
-            // Determine the file path based on storage type
-            let viewLink = '';
-            if (data.filename) {
-                let folder = data.chosen_storage;
-                if (folder === 'sql' || folder === 'nosql') {
-                    folder = 'json_data';
-                }
-                viewLink = `http://127.0.0.1:5000/storage/${folder}/${data.filename}`;
-            }
-
-            // Build HTML for success result
-            resultDiv.innerHTML = `
-        <div class="result-card success-card">
-            <div class="result-header success">
-                <span class="result-icon">✅</span>
-                <h3>Upload Successful!</h3>
-            </div>
-            <div class="result-body">
-                <div class="result-item">
-                    <span class="item-label">Input Type:</span>
-                    <span class="item-value">
-                        ${typeIcons[data.input_type] || '📄'} 
-                        ${data.input_type.toUpperCase()}
-                    </span>
-                </div>
-                <div class="result-item">
-                    <span class="item-label">Storage Location:</span>
-                    <span class="item-value">
-                        ${storageIcons[data.chosen_storage] || '💾'} 
-                        ${data.chosen_storage.toUpperCase()}
-                    </span>
-                </div>
-                ${data.filename ? `
-                <div class="result-item">
-                    <span class="item-label">Filename:</span>
-                    <span class="item-value filename">${data.filename}</span>
-                </div>
-                ` : ''}
-                ${viewLink ? `
-                <div class="result-item">
-                    <span class="item-label">View File:</span>
-                    <span class="item-value">
-                        <a href="${viewLink}" target="_blank" class="view-file-link">
-                            👁️ Open File
-                        </a>
-                    </span>
-                </div>
-                ` : ''}
-                ${data.comment_received ? `
-                <div class="result-item">
-                    <span class="item-label">Comment:</span>
-                    <span class="item-value">${data.comment_received}</span>
-                </div>
-                ` : ''}
-                <div class="result-message">
-                    <p>${data.message}</p>
-                </div>
-            </div>
-        </div>
-    `;
-
-            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            addCloseButton(resultDiv);
-        }
-
-        /**
-         * Display error message
-         * @param {Object} data - Error data from backend
-         */
-        function displayError(data) {
-            const resultDiv = document.getElementById('result');
-
-            resultDiv.innerHTML = `
-                <div class="result-card error-card">
-                    <div class="result-header error">
-                        <span class="result-icon">⚠️</span>
-                        <h3>Upload Failed</h3>
-                    </div>
-                    <div class="result-body">
-                        <div class="result-item">
-                            <span class="item-label">Error:</span>
-                            <span class="item-value error-text">${data.error || 'Unknown error'}</span>
-                        </div>
-                        <div class="result-message">
-                            <p>${data.message || 'Please check your input and try again.'}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // Scroll to result
-            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-            // Keep the error message visible
-            addCloseButton(resultDiv);
-        }
-
-        /**
-         * Add a close button to the result card
-         * @param {HTMLElement} resultDiv - The result container element
-         */
-        function addCloseButton(resultDiv) {
-            // Check if close button already exists
-            if (resultDiv.querySelector('.close-result-btn')) return;
-
-            const closeBtn = document.createElement('button');
-            closeBtn.className = 'close-result-btn';
-            closeBtn.innerHTML = '✖ Close';
-            closeBtn.onclick = function () {
-                resultDiv.style.display = 'none';
-            };
-
-            const resultCard = resultDiv.querySelector('.result-card');
-            if (resultCard) {
-                resultCard.appendChild(closeBtn);
-            }
-        }
-
-        /**
-         * Clear the form but keep results visible
-         */
-        function clearForm() {
-            document.getElementById('uploadForm').reset();
-            document.getElementById('fileName').textContent = 'Choose a file...';
-            // Don't hide the result - let user manually close it with the X button
-        }
-
-        async function retrieveData() {
-            const resultDiv = document.getElementById('result');
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = `<div class="loading"><div class="spinner"></div><p>Fetching stored data...</p></div>`;
-
-            try {
-                const response = await fetch('http://127.0.0.1:5000/retrieve');
-                const data = await response.json();
-
-                // Create clickable file lists
-                const imageLinks = data.images.map(file =>
-                    `<a href="http://127.0.0.1:5000/storage/images/${file}" target="_blank">${file}</a>`
-                ).join(', ') || 'No images stored';
-
-                const videoLinks = data.videos.map(file =>
-                    `<a href="http://127.0.0.1:5000/storage/videos/${file}" target="_blank">${file}</a>`
-                ).join(', ') || 'No videos stored';
-
-                const jsonLinks = data.json_data.map(file =>
-                    `<a href="http://127.0.0.1:5000/storage/json_data/${file}" target="_blank">${file}</a>`
-                ).join(', ') || 'No JSON files stored';
-
-                let html = `
-            <div class="result-card success-card">
-                <div class="result-header success">
-                    <span class="result-icon">📂</span>
-                    <h3>Retrieved Data</h3>
-                </div>
-                <div class="result-body">
-                    <p><strong>Images:</strong> ${imageLinks}</p>
-                    <p><strong>Videos:</strong> ${videoLinks}</p>
-                    <p><strong>JSON Data:</strong> ${jsonLinks}</p>
-                </div>
-            </div>`;
-
-                resultDiv.innerHTML = html;
-                addCloseButton(resultDiv);
-            } catch (error) {
-                resultDiv.innerHTML = `
-            <div class="result-card error-card">
-                <div class="result-header error">
-                    <span class="result-icon">❌</span>
-                    <h3>Error</h3>
-                </div>
-                <div class="result-body">
-                    <p>Failed to retrieve data: ${error.message}</p>
-                </div>
-            </div>`;
-                addCloseButton(resultDiv);
-            }
-        }
-
     </script>
 </body>
-
 </html>

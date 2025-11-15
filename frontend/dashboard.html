@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Intelligent Multi-Modal Storage</title>
+    <link rel="stylesheet" href="dashboard-style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation Bar -->
+        <nav class="navbar">
+            <div class="navbar-left">
+                <span class="logo">🎯</span>
+                <h2>Multi-Modal Storage</h2>
+            </div>
+            <div class="navbar-right">
+                <div class="user-info">
+                    <div class="username" id="displayName">Loading...</div>
+                    <div class="email" id="displayEmail"></div>
+                </div>
+                <button class="logout-btn" onclick="handleLogout()">
+                    🚪 Logout
+                </button>
+            </div>
+        </nav>
+
+        <!-- Welcome Section -->
+        <div class="welcome-section">
+            <h1>Welcome, <span id="welcomeName">User</span>! 👋</h1>
+            <p>Manage your files and uploads from your personal dashboard</p>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="icon">🖼️</div>
+                <div class="number" id="imageCount">0</div>
+                <div class="label">Images</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">🎬</div>
+                <div class="number" id="videoCount">0</div>
+                <div class="label">Videos</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">📊</div>
+                <div class="number" id="jsonCount">0</div>
+                <div class="label">JSON Files</div>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="upload-card">
+            <h2>📤 Upload New Content</h2>
+            
+            <form id="uploadForm" method="POST" enctype="multipart/form-data">
+                <!-- File Upload Section -->
+                <div class="form-section">
+                    <label for="media_file" class="form-label">
+                        📁 Upload Media File
+                        <span class="label-hint">(Images or Videos)</span>
+                    </label>
+                    <div class="file-input-wrapper">
+                        <input 
+                            type="file" 
+                            id="media_file" 
+                            name="file" 
+                            accept="image/*,video/*"
+                            class="file-input"
+                        >
+                        <label for="media_file" class="file-input-label">
+                            <span class="file-icon">📎</span>
+                            <span id="fileName">Choose a file...</span>
+                        </label>
+                    </div>
+                    <p class="input-hint">Supported: JPG, PNG, GIF, MP4, AVI, MOV, etc.</p>
+                </div>
+
+                <!-- Divider -->
+                <div class="divider">
+                    <span>OR</span>
+                </div>
+
+                <!-- JSON Input Section -->
+                <div class="form-section">
+                    <label for="json_text" class="form-label">
+                        📊 JSON Structured Data
+                        <span class="label-hint">(Paste JSON content)</span>
+                    </label>
+                    <textarea 
+                        id="json_text" 
+                        name="json_data" 
+                        placeholder='{"name": "John", "age": 25, "skills": ["Python", "AI"]}'
+                        rows="6"
+                        class="json-textarea"
+                    ></textarea>
+                    <p class="input-hint">System will auto-detect SQL vs NoSQL classification</p>
+                </div>
+
+                <!-- Comment Section -->
+                <div class="form-section">
+                    <label for="comment" class="form-label">
+                        💬 Optional Comment
+                    </label>
+                    <input 
+                        type="text" 
+                        id="comment" 
+                        name="comment" 
+                        placeholder="Add metadata or description..."
+                        class="comment-input"
+                    >
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="submit-btn">
+                    <span class="btn-icon">🚀</span>
+                    Upload & Classify
+                </button>
+
+                <!-- Clear Form Button -->
+                <button type="button" class="clear-btn" onclick="clearForm()">
+                    Clear Form
+                </button>
+
+                <!-- Retrieve Button -->
+                <button type="button" class="retrieve-btn" onclick="retrieveData()">
+                    📂 View My Files
+                </button>
+            </form>
+        </div>
+
+        <!-- Result Display Area -->
+        <div id="result" class="result-container" style="display: none;">
+            <!-- Results will be dynamically inserted here -->
+        </div>
+
+        <!-- Footer Info -->
+        <footer class="footer">
+            <p>College Project • Intelligent Storage System • 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        // Check authentication on page load
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/check-session', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (!data.logged_in) {
+                    // Not logged in, redirect to login page
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                // Set user info
+                currentUser = data.user;
+                document.getElementById('displayName').textContent = data.user.full_name || data.user.username;
+                document.getElementById('displayEmail').textContent = data.user.email;
+                document.getElementById('welcomeName').textContent = data.user.full_name || data.user.username;
+                
+                // Load dashboard statistics
+                loadDashboardStats();
+                
+            } catch (error) {
+                console.error('Session check failed:', error);
+                window.location.href = 'login.html';
+            }
+        });
+
+        // Load dashboard statistics
+        async function loadDashboardStats() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/dashboard-stats', {
+                    credentials: 'include'
+                });
+                const stats = await response.json();
+                
+                document.getElementById('imageCount').textContent = stats.total_images;
+                document.getElementById('videoCount').textContent = stats.total_videos;
+                document.getElementById('jsonCount').textContent = stats.total_json;
+                
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        // Handle logout
+        async function handleLogout() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        }
+
+        // Display selected filename
+        document.getElementById('media_file').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'Choose a file...';
+            document.getElementById('fileName').textContent = fileName;
+        });
+
+        // Handle form submission
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Processing your upload...</p>
+                </div>
+            `;
+
+            try {
+                const formData = new FormData(this);
+
+                const response = await fetch('http://127.0.0.1:5000/upload', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displaySuccess(data);
+                    // Reload stats after successful upload
+                    loadDashboardStats();
+                } else {
+                    displayError(data);
+                }
+
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result-card error-card">
+                        <div class="result-header error">
+                            <span class="result-icon">❌</span>
+                            <h3>Connection Error</h3>
+                        </div>
+                        <div class="result-body">
+                            <p><strong>Error:</strong> ${error.message}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        function displaySuccess(data) {
+            const resultDiv = document.getElementById('result');
+            
+            const typeIcons = {
+                'image': '🖼️',
+                'video': '🎬',
+                'json': '📊'
+            };
+            
+            const storageIcons = {
+                'images': '🖼️',
+                'videos': '🎬',
+                'sql': '🗄️',
+                'nosql': '📦'
+            };
+
+            let viewLink = '';
+            if (data.filename && currentUser) {
+                let folder = data.chosen_storage;
+                if (folder === 'sql' || folder === 'nosql') {
+                    folder = 'json_data';
+                }
+                viewLink = `http://127.0.0.1:5000/storage/${currentUser.username}/${folder}/${data.filename}`;
+            }
+
+            resultDiv.innerHTML = `
+                <div class="result-card success-card">
+                    <div class="result-header success">
+                        <span class="result-icon">✅</span>
+                        <h3>Upload Successful!</h3>
+                    </div>
+                    <div class="result-body">
+                        <div class="result-item">
+                            <span class="item-label">Input Type:</span>
+                            <span class="item-value">
+                                ${typeIcons[data.input_type] || '📄'} 
+                                ${data.input_type.toUpperCase()}
+                            </span>
+                        </div>
+                        <div class="result-item">
+                            <span class="item-label">Storage Location:</span>
+                            <span class="item-value">
+                                ${storageIcons[data.chosen_storage] || '💾'} 
+                                ${data.chosen_storage.toUpperCase()}
+                            </span>
+                        </div>
+                        ${data.filename ? `
+                        <div class="result-item">
+                            <span class="item-label">Filename:</span>
+                            <span class="item-value filename">${data.filename}</span>
+                        </div>
+                        ` : ''}
+                        ${viewLink ? `
+                        <div class="result-item">
+                            <span class="item-label">View File:</span>
+                            <span class="item-value">
+                                <a href="${viewLink}" target="_blank" class="view-file-link">
+                                    👁️ Open File
+                                </a>
+                            </span>
+                        </div>
+                        ` : ''}
+                        ${data.comment_received ? `
+                        <div class="result-item">
+                            <span class="item-label">Comment:</span>
+                            <span class="item-value">${data.comment_received}</span>
+                        </div>
+                        ` : ''}
+                        <div class="result-message">
+                            <p>${data.message}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            addCloseButton(resultDiv);
+        }
+
+        function displayError(data) {
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = `
+                <div class="result-card error-card">
+                    <div class="result-header error">
+                        <span class="result-icon">⚠️</span>
+                        <h3>Upload Failed</h3>
+                    </div>
+                    <div class="result-body">
+                        <div class="result-item">
+                            <span class="item-label">Error:</span>
+                            <span class="item-value error-text">${data.error || 'Unknown error'}</span>
+                        </div>
+                        <div class="result-message">
+                            <p>${data.message || 'Please check your input and try again.'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            addCloseButton(resultDiv);
+        }
+
+        function addCloseButton(resultDiv) {
+            if (resultDiv.querySelector('.close-result-btn')) return;
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'close-result-btn';
+            closeBtn.innerHTML = '✖ Close';
+            closeBtn.onclick = function() {
+                resultDiv.style.display = 'none';
+            };
+            
+            const resultCard = resultDiv.querySelector('.result-card');
+            if (resultCard) {
+                resultCard.appendChild(closeBtn);
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('uploadForm').reset();
+            document.getElementById('fileName').textContent = 'Choose a file...';
+        }
+
+        async function retrieveData() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `<div class="loading"><div class="spinner"></div><p>Fetching your files...</p></div>`;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/retrieve', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                const imageLinks = data.images.map(file => 
+                    `<a href="http://127.0.0.1:5000/storage/${currentUser.username}/images/${file}" target="_blank">${file}</a>`
+                ).join(', ') || 'No images stored';
+
+                const videoLinks = data.videos.map(file => 
+                    `<a href="http://127.0.0.1:5000/storage/${currentUser.username}/videos/${file}" target="_blank">${file}</a>`
+                ).join(', ') || 'No videos stored';
+
+                const jsonLinks = data.json_data.map(file => 
+                    `<a href="http://127.0.0.1:5000/storage/${currentUser.username}/json_data/${file}" target="_blank">${file}</a>`
+                ).join(', ') || 'No JSON files stored';
+
+                let html = `
+                    <div class="result-card success-card">
+                        <div class="result-header success">
+                            <span class="result-icon">📂</span>
+                            <h3>Your Files</h3>
+                        </div>
+                        <div class="result-body">
+                            <p><strong>Images:</strong> ${imageLinks}</p>
+                            <p><strong>Videos:</strong> ${videoLinks}</p>
+                            <p><strong>JSON Data:</strong> ${jsonLinks}</p>
+                        </div>
+                    </div>`;
+                
+                resultDiv.innerHTML = html;
+                addCloseButton(resultDiv);
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result-card error-card">
+                        <div class="result-header error">
+                            <span class="result-icon">❌</span>
+                            <h3>Error</h3>
+                        </div>
+                        <div class="result-body">
+                            <p>Failed to retrieve data: ${error.message}</p>
+                        </div>
+                    </div>`;
+                addCloseButton(resultDiv);
+            }
+        }
+    </script>
+</body>
+</html>
