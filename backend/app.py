@@ -12,7 +12,7 @@ Author: Kumar Amityush
 Date: November 2025
 """
 
-from flask import Flask, request, jsonify, send_from_directory, session
+from flask import Flask, request, jsonify, send_from_directory, send_file, session
 from flask_cors import CORS
 import os
 import json
@@ -20,6 +20,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import secrets
+import mimetypes
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -509,6 +510,14 @@ def retrieve_data():
             'message': str(e)
         }), 500
 
+@app.route('/public/<path:username>/<path:folder>/<path:filename>', methods=['GET'])
+def serve_public_file(username, folder, filename):
+    folder_path = os.path.abspath(os.path.join(STORAGE_BASE, username, folder))
+    if not folder_path.startswith(os.path.abspath(STORAGE_BASE)):
+        return jsonify({'error': 'Invalid path'}), 400
+    if not os.path.exists(folder_path):
+        return jsonify({'error': 'Folder not found'}), 404
+    return send_from_directory(folder_path, filename)
 
 @app.route('/storage/<path:username>/<path:folder>/<path:filename>')
 @require_login
@@ -524,14 +533,105 @@ def serve_file(username, folder, filename):
                 'message': 'You can only access your own files'
             }), 403
         
+        # Validate folder path
+        if folder not in ['images', 'videos', 'json_data']:
+            return jsonify({
+                'error': 'Invalid folder',
+                'message': 'Invalid storage folder'
+            }), 400
+        
+        # Build the full file path
         folder_path = os.path.join(STORAGE_BASE, username, folder)
-        return send_from_directory(folder_path, filename)
+        file_path = os.path.join(folder_path, filename)
+        
+        # Normalize paths to prevent directory traversal
+        folder_path = os.path.abspath(folder_path)
+        file_path = os.path.abspath(file_path)
+        
+        # Ensure file is within the storage folder
+        if not file_path.startswith(folder_path):
+            return jsonify({
+                'error': 'Invalid path',
+                'message': 'Access denied'
+            }), 403
+        
+        # Check if file exists
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            return jsonify({
+                'error': 'File not found',
+                'message': f'The file {filename} does not exist'
+            }), 404
+        
+        # Serve the file directly using send_file
+        mimetype = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
+        return send_file(file_path, mimetype=mimetype, as_attachment=False)
     
-    except FileNotFoundError:
+    except Exception as e:
+        print(f"Error serving file {filename}: {str(e)}")
         return jsonify({
-            'error': 'File not found',
-            'message': f'The requested file does not exist'
-        }), 404
+            'error': 'Server error',
+            'message': f'Failed to serve file: {str(e)}'
+        }), 500
+
+
+@app.route('/download/<path:username>/<path:folder>/<path:filename>')
+@require_login
+def download_file(username, folder, filename):
+    """
+    Download user's uploaded files (with authorization check and force download)
+    """
+    try:
+        # Check if user is accessing their own files
+        if session['username'] != username:
+            return jsonify({
+                'error': 'Unauthorized',
+                'message': 'You can only access your own files'
+            }), 403
+        
+        # Validate folder
+        if folder not in ['images', 'videos', 'json_data']:
+            return jsonify({
+                'error': 'Invalid folder',
+                'message': 'Invalid storage folder'
+            }), 400
+        
+        # Build the full file path
+        folder_path = os.path.join(STORAGE_BASE, username, folder)
+        file_path = os.path.join(folder_path, filename)
+        
+        # Normalize paths to prevent directory traversal
+        folder_path = os.path.abspath(folder_path)
+        file_path = os.path.abspath(file_path)
+        
+        # Ensure file is within the storage folder
+        if not file_path.startswith(folder_path):
+            return jsonify({
+                'error': 'Invalid path',
+                'message': 'Access denied'
+            }), 403
+        
+        # Check if file exists
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            return jsonify({
+                'error': 'File not found',
+                'message': f'The file {filename} does not exist'
+            }), 404
+        
+        # Download the file using send_file
+        mimetype = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
+        return send_file(
+            file_path,
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=filename
+        )
+    
+    except Exception as e:
+        print(f"Error downloading file {filename}: {str(e)}")
+        return jsonify({
+            'error': 'Download failed',
+            'message': str(e)
+        }), 500
 
 
 @app.route('/dashboard-stats', methods=['GET'])

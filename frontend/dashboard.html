@@ -135,6 +135,27 @@
             <!-- Results will be dynamically inserted here -->
         </div>
 
+        <!-- Image/Video Modal Popup -->
+        <div id="mediaModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">View File</h3>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <img id="modalImage" src="" alt="File preview" style="display: none;">
+                    <video id="modalVideo" controls style="display: none;">
+                        <source id="modalVideoSource" src="" type="">
+                    </video>
+                    <pre id="modalJson" style="display: none;"></pre>
+                </div>
+                <div class="modal-footer">
+                    <a id="modalDownload" href="" download class="modal-btn download-btn">⬇️ Download</a>
+                    <button onclick="closeModal()" class="modal-btn close-btn">✖ Close</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Footer Info -->
         <footer class="footer">
             <p>College Project • Intelligent Storage System • 2025</p>
@@ -143,6 +164,82 @@
 
     <script>
         let currentUser = null;
+
+        // Modal functions
+        function openModal(fileUrl, fileType, filename, downloadUrl) {
+            const modal = document.getElementById('mediaModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalVideo = document.getElementById('modalVideo');
+            const modalVideoSource = document.getElementById('modalVideoSource');
+            const modalJson = document.getElementById('modalJson');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalDownload = document.getElementById('modalDownload');
+
+            // Hide all content types first
+            modalImage.style.display = 'none';
+            modalVideo.style.display = 'none';
+            modalJson.style.display = 'none';
+
+            // Set download link
+            modalDownload.href = downloadUrl;
+            modalDownload.download = filename;
+
+            // Show appropriate content based on file type
+            if (fileType === 'image') {
+                modalImage.src = fileUrl;
+                modalImage.style.display = 'block';
+                modalTitle.textContent = '🖼️ ' + filename;
+            } else if (fileType === 'video') {
+                modalVideoSource.src = fileUrl;
+                modalVideoSource.type = 'video/' + filename.split('.').pop();
+                modalVideo.load();
+                modalVideo.style.display = 'block';
+                modalTitle.textContent = '🎬 ' + filename;
+            } else if (fileType === 'json') {
+                fetch(fileUrl, { credentials: 'include' })
+                    .then(res => res.json())
+                    .then(data => {
+                        modalJson.textContent = JSON.stringify(data, null, 2);
+                        modalJson.style.display = 'block';
+                    })
+                    .catch(err => {
+                        modalJson.textContent = 'Error loading JSON: ' + err.message;
+                        modalJson.style.display = 'block';
+                    });
+                modalTitle.textContent = '📊 ' + filename;
+            }
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('mediaModal');
+            const modalVideo = document.getElementById('modalVideo');
+            
+            // Stop video if playing
+            if (modalVideo) {
+                modalVideo.pause();
+            }
+
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // Re-enable scrolling
+        }
+
+        // Close modal when clicking outside content
+        window.onclick = function(event) {
+            const modal = document.getElementById('mediaModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
 
         // Check authentication on page load
         window.addEventListener('load', async function() {
@@ -276,12 +373,20 @@
             };
 
             let viewLink = '';
+            let downloadLink = '';
+            let fileType = '';
             if (data.filename && currentUser) {
                 let folder = data.chosen_storage;
                 if (folder === 'sql' || folder === 'nosql') {
                     folder = 'json_data';
                 }
                 viewLink = `http://127.0.0.1:5000/storage/${currentUser.username}/${folder}/${data.filename}`;
+                downloadLink = `http://127.0.0.1:5000/download/${currentUser.username}/${folder}/${data.filename}`;
+                
+                // Determine file type
+                if (data.input_type === 'image') fileType = 'image';
+                else if (data.input_type === 'video') fileType = 'video';
+                else if (data.input_type === 'json') fileType = 'json';
             }
 
             resultDiv.innerHTML = `
@@ -313,10 +418,13 @@
                         ` : ''}
                         ${viewLink ? `
                         <div class="result-item">
-                            <span class="item-label">View File:</span>
-                            <span class="item-value">
-                                <a href="${viewLink}" target="_blank" class="view-file-link">
-                                    👁️ Open File
+                            <span class="item-label">Actions:</span>
+                            <span class="item-value action-buttons">
+                                <button onclick="openModal('${viewLink}', '${fileType}', '${data.filename}', '${downloadLink}')" class="view-file-link">
+                                    👁️ View File
+                                </button>
+                                <a href="${downloadLink}" download class="download-file-link">
+                                    ⬇️ Download
                                 </a>
                             </span>
                         </div>
@@ -395,18 +503,58 @@
                 });
                 const data = await response.json();
 
-                const imageLinks = data.images.map(file => 
-                    `<a href="http://127.0.0.1:5000/storage/${currentUser.username}/images/${file}" target="_blank">${file}</a>`
-                ).join(', ') || 'No images stored';
+                // Helper function to get file icon
+                const getFileIcon = (filename, type) => {
+                    if (type === 'images') return '🖼️';
+                    if (type === 'videos') return '🎬';
+                    if (type === 'json') return '📊';
+                    return '📄';
+                };
 
-                const videoLinks = data.videos.map(file => 
-                    `<a href="http://127.0.0.1:5000/storage/${currentUser.username}/videos/${file}" target="_blank">${file}</a>`
-                ).join(', ') || 'No videos stored';
+                // Helper function to create file list HTML
+                const createFileList = (files, type, folderName) => {
+                    if (files.length === 0) {
+                        return `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">${getFileIcon('', type)}</div>
+                                <div class="empty-state-text">No ${type} uploaded yet</div>
+                            </div>
+                        `;
+                    }
 
-                const jsonLinks = data.json_data.map(file => 
-                    `<a href="http://127.0.0.1:5000/storage/${currentUser.username}/json_data/${file}" target="_blank">${file}</a>`
-                ).join(', ') || 'No JSON files stored';
+                    return `
+                        <div class="files-list">
+                            ${files.map(file => {
+                                const viewUrl = `http://127.0.0.1:5000/storage/${currentUser.username}/${folderName}/${file}`;
+                                const downloadUrl = `http://127.0.0.1:5000/download/${currentUser.username}/${folderName}/${file}`;
+                                const fileType = type === 'images' ? 'image' : (type === 'videos' ? 'video' : 'json');
+                                
+                                return `
+                                <div class="file-item-row">
+                                    <div class="file-info">
+                                        <div class="file-type-icon">${getFileIcon(file, type)}</div>
+                                        <div class="file-details">
+                                            <div class="file-name-text">${file}</div>
+                                        </div>
+                                    </div>
+                                    <div class="file-actions-buttons">
+                                        <button onclick="openModal('${viewUrl}', '${fileType}', '${file}', '${downloadUrl}')" 
+                                                class="action-btn view-btn">
+                                            👁️ View
+                                        </button>
+                                        <a href="${downloadUrl}" 
+                                           download 
+                                           class="action-btn download-btn">
+                                            ⬇️ Download
+                                        </a>
+                                    </div>
+                                </div>
+                            `;}).join('')}
+                        </div>
+                    `;
+                };
 
+                // Build the complete HTML
                 let html = `
                     <div class="result-card success-card">
                         <div class="result-header success">
@@ -414,11 +562,40 @@
                             <h3>Your Files</h3>
                         </div>
                         <div class="result-body">
-                            <p><strong>Images:</strong> ${imageLinks}</p>
-                            <p><strong>Videos:</strong> ${videoLinks}</p>
-                            <p><strong>JSON Data:</strong> ${jsonLinks}</p>
+                            <div class="files-container">
+                                <!-- Images Section -->
+                                <div class="file-category-section">
+                                    <div class="file-category-header">
+                                        <span class="file-category-icon">🖼️</span>
+                                        <h4 class="file-category-title">Images</h4>
+                                        <span class="file-count">${data.images.length}</span>
+                                    </div>
+                                    ${createFileList(data.images, 'images', 'images')}
+                                </div>
+
+                                <!-- Videos Section -->
+                                <div class="file-category-section">
+                                    <div class="file-category-header">
+                                        <span class="file-category-icon">🎬</span>
+                                        <h4 class="file-category-title">Videos</h4>
+                                        <span class="file-count">${data.videos.length}</span>
+                                    </div>
+                                    ${createFileList(data.videos, 'videos', 'videos')}
+                                </div>
+
+                                <!-- JSON Data Section -->
+                                <div class="file-category-section">
+                                    <div class="file-category-header">
+                                        <span class="file-category-icon">📊</span>
+                                        <h4 class="file-category-title">JSON Data</h4>
+                                        <span class="file-count">${data.json_data.length}</span>
+                                    </div>
+                                    ${createFileList(data.json_data, 'json', 'json_data')}
+                                </div>
+                            </div>
                         </div>
-                    </div>`;
+                    </div>
+                `;
                 
                 resultDiv.innerHTML = html;
                 addCloseButton(resultDiv);
