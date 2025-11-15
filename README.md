@@ -3,9 +3,11 @@
 A college project featuring a secure, multi-user storage system that automatically classifies and stores different types of data with user authentication and personal isolated storage:
 - **Images** → `storage/{username}/images/`
 - **Videos** → `storage/{username}/videos/`
+- **PDF Documents** → `storage/{username}/pdfs/`
 - **JSON Data** → `storage/{username}/json_data/` (with SQL/NoSQL classification)
 - **User Authentication** → Session-based login with password hashing
-- **Modal File Viewer** → In-page popup for viewing images, videos, and JSON
+- **Modal File Viewer** → In-page popup for viewing images, videos, PDFs, and JSON
+- **Multiple File Upload** → Upload multiple files at once with batch processing
 
 ---
 
@@ -16,10 +18,11 @@ Multi-Modal Storage/
 ├── backend/
 │   ├── app.py              # Flask backend server
 │   ├── requirements.txt    # Python dependencies
-|── storage/            # Per-user storage folders
+├── storage/            # Per-user storage folders
 │       └── {username}/
 │           ├── images/
 │           ├── videos/
+│           ├── pdfs/
 │           └── json_data/
 ├── frontend/
 │   ├── index.html          # Landing page
@@ -93,19 +96,25 @@ start frontend\index.html
    - Passwords are securely hashed using Werkzeug
 
 ### 2. **Upload Files:**
-   - **Images**: Click "Choose a file..." and select JPG, PNG, GIF, etc.
-   - **Videos**: Click "Choose a file..." and select MP4, AVI, MOV, etc.
-   - **JSON Data**: Paste JSON in the textarea (auto-classified as SQL/NoSQL)
+   - **Unified Upload**: Single file input accepts all file types
+   - **Multiple Files**: Hold Ctrl (Windows) or Cmd (Mac) to select multiple files
+   - **Supported Formats**:
+     - Images: JPG, PNG, GIF, BMP, WEBP, SVG
+     - Videos: MP4, AVI, MOV, MKV, FLV, WMV, WEBM
+     - Documents: PDF
+     - Data: JSON (upload file or paste in textarea)
    - Add optional comments/metadata
    - Click "Upload & Classify"
+   - System auto-detects file type and stores in correct folder
 
 ### 3. **View Your Files:**
    - Click "🗂️ Retrieve Data" to see all your files
-   - Files are organized by category (Images, Videos, JSON)
+   - Files are organized by category (Images, Videos, PDFs, JSON)
    - **Modal Popup Viewer**:
      - Click "👁️ View File" to open in-page popup modal
-     - View images and videos without leaving the page
+     - View images, videos, and PDFs without leaving the page
      - See formatted JSON with syntax highlighting
+     - PDFs displayed in embedded viewer
      - Close with X button, Escape key, or click outside
    - Click "⬇️ Download" to save files locally
 
@@ -119,17 +128,23 @@ start frontend\index.html
 ### Core Features
 ✅ **User Authentication** - Secure login/registration with password hashing  
 ✅ **Personal Storage** - Isolated storage per user  
-✅ **Automatic File Type Detection** - Uses MIME types  
+✅ **Unified Upload System** - Single input for all file types (images, videos, PDFs, JSON)  
+✅ **Multiple File Upload** - Upload multiple files at once with batch processing  
+✅ **Automatic File Type Detection** - Uses MIME types for auto-classification  
 ✅ **Smart JSON Classification** - SQL vs NoSQL analysis  
+✅ **PDF Support** - Upload and view PDF documents in-browser  
 ✅ **Timestamped Filenames** - Prevents conflicts  
 ✅ **Session Management** - Secure server-side sessions  
 
 ### UI/UX Features
 ✅ **Modal Popup Viewer** - In-page file viewing with smooth animations  
+✅ **PDF Viewer** - Embedded PDF viewer in modal popup  
+✅ **Batch Upload Results** - Visual summary of multi-file uploads  
+✅ **Progress Tracking** - Real-time upload progress for multiple files  
 ✅ **2x2 Feature Grid** - Clean landing page layout  
 ✅ **Responsive Design** - Works on desktop and mobile  
 ✅ **Modern UI** - Gradient backgrounds, glassmorphism effects  
-✅ **Real-time Feedback** - Success/error messages  
+✅ **Real-time Feedback** - Success/error messages with file-by-file status  
 ✅ **Keyboard Shortcuts** - ESC to close modal  
 
 ### Technical Features
@@ -137,6 +152,8 @@ start frontend\index.html
 ✅ **File Download** - Dedicated download endpoint  
 ✅ **Secure File Serving** - Uses absolute paths with send_file  
 ✅ **Body Scroll Lock** - No background scrolling when modal open  
+✅ **Sequential Upload** - Multiple files uploaded one by one with error handling  
+✅ **Mixed Result Handling** - Displays both successful and failed uploads  
 
 ---
 
@@ -162,10 +179,11 @@ start frontend\index.html
 | `/register` | POST | Register new user account |
 | `/login` | POST | User login (creates session) |
 | `/logout` | POST | User logout (destroys session) |
-| `/upload` | POST | Upload files or JSON data (authenticated) |
-| `/retrieve` | POST | Get user's files list (authenticated) |
-| `/storage/<user>/<folder>/<file>` | GET | View file in browser |
+| `/upload` | POST | Upload file(s) or JSON data (authenticated, supports multiple files) |
+| `/retrieve` | GET | Get user's files list including PDFs (authenticated) |
+| `/storage/<user>/<folder>/<file>` | GET | View file in browser (images, videos, PDFs, JSON) |
 | `/download/<user>/<folder>/<file>` | GET | Download file |
+| `/dashboard-stats` | GET | Get user statistics (file counts) |
 | `/health` | GET | Health check |
 
 ---
@@ -225,6 +243,12 @@ College Project • November 2025
 ### Issue: Can't view uploaded files
 **Solution**: Ensure you're logged in as the same user who uploaded the files
 
+### Issue: Multiple file upload not working
+**Solution**: Hold Ctrl (Windows) or Cmd (Mac) when selecting files, ensure all files are supported formats
+
+### Issue: PDF not displaying in modal
+**Solution**: Ensure browser allows embedded PDFs, try downloading if viewer doesn't load
+
 ---
 
 ## 📌 Important Notes
@@ -232,13 +256,18 @@ College Project • November 2025
 1. Keep the backend server running while using the frontend
 2. **User Authentication Required**: Register/login before uploading files
 3. **Per-User Storage**: Each user has isolated storage folders
-4. Storage folders are created automatically per user
-5. Files are saved with timestamps to prevent overwriting
-6. **Session-Based**: Sessions persist until logout or server restart
-7. Passwords are hashed using Werkzeug (never stored as plain text)
-8. Supported image formats: PNG, JPG, JPEG, GIF, BMP, WEBP, SVG
-9. Supported video formats: MP4, AVI, MOV, MKV, FLV, WMV, WEBM
+4. **Multiple File Upload**: Select multiple files at once (Ctrl+Click or Cmd+Click)
+5. Storage folders are created automatically per user
+6. Files are saved with timestamps to prevent overwriting
+7. **Session-Based**: Sessions persist until logout or server restart
+8. Passwords are hashed using Werkzeug (never stored as plain text)
+9. **Supported Formats**:
+   - Images: PNG, JPG, JPEG, GIF, BMP, WEBP, SVG
+   - Videos: MP4, AVI, MOV, MKV, FLV, WMV, WEBM
+   - Documents: PDF
+   - Data: JSON
 10. **Modal Viewer**: View files in-page without opening new tabs
+11. **Batch Processing**: Upload multiple files with individual success/error tracking
 
 ---
 
@@ -250,13 +279,17 @@ This project demonstrates:
 - User authentication & authorization
 - Session management
 - Password hashing & security
-- File upload/download handling
+- **Multiple file upload handling** with batch processing
+- **PDF document management** and in-browser viewing
+- File upload/download handling with MIME type detection
 - Per-user data isolation
 - Data classification algorithms (SQL vs NoSQL)
 - Modern UI/UX design (glassmorphism, gradients, animations)
-- Modal popup implementation
+- Modal popup implementation with embedded viewers
 - Client-server architecture
 - Responsive web design (2x2 grid, flexbox, CSS grid)
+- **Error handling** for individual files in batch uploads
+- **Progress tracking** for multiple simultaneous operations
 
 ---
 
