@@ -162,7 +162,8 @@ start frontend\index.html
    - NoSQL data → Multi-column database-style table with headers  
 ✅ **Color-Coded Data Types** - Visual differentiation (NULL, Boolean, Number, String, Array, Object)  
 ✅ **Purple Gradient Tabs** - High-visibility active state with smooth transitions  
-✅ **PDF Viewer** - Embedded PDF viewer in modal popup  
+✅ **PDF Viewer** - Embedded PDF viewer in modal popup (75vh height for comfortable reading)  
+✅ **PDF Visual Enhancements** - Red accent colors, special hover effects, left border indicators  
 ✅ **Batch Upload Results** - Visual summary of multi-file uploads  
 ✅ **Progress Tracking** - Real-time upload progress for multiple files  
 ✅ **2x2 Feature Grid** - Clean landing page layout  
@@ -175,6 +176,7 @@ start frontend\index.html
 ### Technical Features
 ✅ **MinIO Cloud Storage** - Files stored in MinIO cloud server (play.min.io demo)  
 ✅ **Hybrid Storage** - Cloud-first with local backup fallback  
+✅ **PDF Upload & Storage** - Full PDF support with dedicated folder structure  
 ✅ **File Metadata Tracking** - users.json database with minio_path field  
 ✅ **CORS Enabled** - Frontend-backend communication  
 ✅ **Dual Download Endpoints** - /storage (preview) and /download (download)  
@@ -280,7 +282,10 @@ College Project • November 2025
 **Solution**: Hold Ctrl (Windows) or Cmd (Mac) when selecting files, ensure all files are supported formats
 
 ### Issue: PDF not displaying in modal
-**Solution**: Ensure browser allows embedded PDFs, try downloading if viewer doesn't load
+**Solution**: Ensure browser allows embedded PDFs, try downloading if viewer doesn't load. Some browsers block PDF iframes - use Chrome/Edge for best experience
+
+### Issue: PDF upload not working
+**Solution**: Restart backend server to load new PDF handling code, ensure file extension is .pdf, check that file size is reasonable
 
 ### Issue: Table view not showing for JSON
 **Solution**: Hard refresh browser (Ctrl+Shift+R), clear cache, check console for errors
@@ -309,9 +314,9 @@ College Project • November 2025
 9. **Supported Formats**:
    - Images: PNG, JPG, JPEG, GIF, BMP, WEBP, SVG
    - Videos: MP4, AVI, MOV, MKV, FLV, WMV, WEBM
-   - Documents: PDF
+   - Documents: PDF (uploaded to dedicated pdfs/ folder)
    - Data: JSON
-10. **Modal Viewer**: View files in-page without opening new tabs
+10. **Modal Viewer**: View files in-page without opening new tabs (PDFs in 75vh iframe)
 11. **Batch Processing**: Upload multiple files with individual success/error tracking
 12. **Dual-View JSON Viewer**: Switch between JSON Format (📄) and Table Format (📊)
 13. **MinIO Cloud Storage**: Files automatically uploaded to cloud (bucket: intelligent-storage)
