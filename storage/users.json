@@ -48,6 +48,15 @@
         }
       ],
       "videos": [],
+      "pdfs": [
+        {
+          "filename": "20251116_124350_Viva_Preparation_Sheet_Intelligent_MultiModal_Storage_System.pdf",
+          "comment": "",
+          "uploaded_at": "2025-11-16T12:43:51.594293",
+          "storage": "minio",
+          "minio_path": "Ninja/pdfs/20251116_124350_Viva_Preparation_Sheet_Intelligent_MultiModal_Storage_System.pdf"
+        }
+      ],
       "json_data": [
         {
           "filename": "data_20251115_225130.json",
@@ -116,6 +125,7 @@
         }
       ],
       "videos": [],
+      "pdfs": [],
       "json_data": [
         {
           "filename": "data_20251116_091220.json",

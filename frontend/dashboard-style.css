@@ -256,6 +256,15 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* PDF Stat Card Special Styling */
+.stat-card:has(#pdfCount) .icon {
+    color: #dc2626;
+}
+
+.stat-card:has(#pdfCount):hover {
+    border-color: #dc2626;
+}
+
 /* ========== Upload Card ========== */
 .upload-card {
     background: white;
@@ -1068,6 +1077,15 @@ html {
     margin: 0 auto;
 }
 
+.modal-body iframe#modalPdf {
+    width: 100%;
+    height: 75vh;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    background: white;
+}
+
 .modal-footer {
     padding: 20px 25px;
     border-top: 1px solid var(--border);
@@ -1778,6 +1796,31 @@ details pre::-webkit-scrollbar-thumb:hover {
 .mixed-card .result-header {
     background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
     border-bottom: 2px solid var(--warning);
+}
+
+/* ========== PDF Specific Styling ========== */
+.modal-body iframe#modalPdf {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+}
+
+.modal-body iframe#modalPdf::before {
+    content: 'Loading PDF...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #6b7280;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* PDF File Item Styling */
+.file-item-row:has(.file-type-icon:contains("📄")) {
+    border-left: 4px solid #dc2626;
+}
+
+.file-item-row:has(.file-type-icon:contains("📄")):hover {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
 }
 
 .mixed-card .result-header.warning .result-icon {

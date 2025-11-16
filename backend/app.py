@@ -87,6 +87,7 @@ db_manager = JSONDatabaseManager(STORAGE_BASE)
 # Allowed file extensions for validation
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm'}
+ALLOWED_PDF_EXTENSIONS = {'pdf'}
 
 
 def create_storage_folders():
@@ -217,6 +218,8 @@ def allowed_file(filename, file_type):
         return extension in ALLOWED_IMAGE_EXTENSIONS
     elif file_type == 'video':
         return extension in ALLOWED_VIDEO_EXTENSIONS
+    elif file_type == 'pdf':
+        return extension in ALLOWED_PDF_EXTENSIONS
     
     return False
 
@@ -299,6 +302,7 @@ def register():
             'uploads': {
                 'images': [],
                 'videos': [],
+                'pdfs': [],
                 'json_data': []
             }
         }
@@ -309,6 +313,7 @@ def register():
         # Create user storage folders (local backup)
         get_user_storage_path(username, 'images')
         get_user_storage_path(username, 'videos')
+        get_user_storage_path(username, 'pdfs')
         get_user_storage_path(username, 'json_data')
         
         return jsonify({
@@ -530,10 +535,55 @@ def upload():
                     'message': f'Video uploaded successfully to {"Minio cloud storage" if MINIO_ENABLED else "local storage"}.'
                 }), 200
             
+            # Handle PDF files
+            elif mime_type == 'application/pdf':
+                if not allowed_file(file.filename, 'pdf'):
+                    return jsonify({
+                        'error': 'Invalid PDF format',
+                        'message': 'Only PDF files are allowed'
+                    }), 400
+                
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = secure_filename(file.filename)
+                unique_filename = f"{timestamp}_{filename}"
+                
+                # Read file data
+                file_data = file.read()
+                
+                # Upload to Minio
+                minio_path = f"{username}/pdfs/{unique_filename}"
+                if MINIO_ENABLED:
+                    upload_to_minio(file_data, minio_path, mime_type)
+                
+                # Save locally as backup
+                folder = get_user_storage_path(username, 'pdfs')
+                filepath = os.path.join(folder, unique_filename)
+                with open(filepath, 'wb') as f:
+                    f.write(file_data)
+                
+                # Update user record
+                users[username]['uploads']['pdfs'].append({
+                    'filename': unique_filename,
+                    'comment': comment,
+                    'uploaded_at': datetime.now().isoformat(),
+                    'storage': 'minio' if MINIO_ENABLED else 'local',
+                    'minio_path': minio_path if MINIO_ENABLED else None
+                })
+                save_users(users)
+                
+                return jsonify({
+                    'input_type': 'pdf',
+                    'chosen_storage': 'pdfs',
+                    'comment_received': comment if comment else '',
+                    'filename': unique_filename,
+                    'storage_location': 'Minio Cloud' if MINIO_ENABLED else 'Local',
+                    'message': f'PDF uploaded successfully to {"Minio cloud storage" if MINIO_ENABLED else "local storage"}.'
+                }), 200
+            
             else:
                 return jsonify({
                     'error': 'Unsupported file type',
-                    'message': f'Only images and videos are accepted. Received: {mime_type}'
+                    'message': f'Only images, videos, and PDFs are accepted. Received: {mime_type}'
                 }), 400
         
         # Handle JSON data
@@ -631,11 +681,13 @@ def retrieve_data():
         
         images_folder = get_user_storage_path(username, 'images')
         videos_folder = get_user_storage_path(username, 'videos')
+        pdfs_folder = get_user_storage_path(username, 'pdfs')
         json_folder = get_user_storage_path(username, 'json_data')
         
         result = {
             'images': os.listdir(images_folder) if os.path.exists(images_folder) else [],
             'videos': os.listdir(videos_folder) if os.path.exists(videos_folder) else [],
+            'pdfs': os.listdir(pdfs_folder) if os.path.exists(pdfs_folder) else [],
             'json_data': os.listdir(json_folder) if os.path.exists(json_folder) else [],
             'storage_info': {
                 'enabled': MINIO_ENABLED,
@@ -834,6 +886,7 @@ def dashboard_stats():
         stats = {
             'total_images': len(uploads.get('images', [])),
             'total_videos': len(uploads.get('videos', [])),
+            'total_pdfs': len(uploads.get('pdfs', [])),
             'total_json': len(uploads.get('json_data', [])),
             'storage_type': 'Minio Cloud' if MINIO_ENABLED else 'Local',
             'recent_uploads': []
@@ -845,6 +898,8 @@ def dashboard_stats():
             all_uploads.append({**img, 'type': 'image'})
         for vid in uploads.get('videos', []):
             all_uploads.append({**vid, 'type': 'video'})
+        for pdf in uploads.get('pdfs', []):
+            all_uploads.append({**pdf, 'type': 'pdf'})
         for js in uploads.get('json_data', []):
             all_uploads.append({**js, 'type': 'json'})
         
