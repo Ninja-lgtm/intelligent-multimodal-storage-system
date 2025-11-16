@@ -1,5 +1,5 @@
 """
-Intelligent Multi-Modal Storage System with User Authentication
+Intelligent Multi-Modal Storage System with Minio Cloud Storage
 College Project Backend using Flask
 
 Features:
@@ -7,20 +7,25 @@ Features:
 - Session Management
 - Per-user Storage Isolation
 - Secure Password Hashing
+- Minio Cloud Storage Integration
 
 Author: Kumar Amityush
 Date: November 2025
 """
 
-from flask import Flask, request, jsonify, send_from_directory, send_file, session
+from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 import os
 import json
+import mimetypes
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import secrets
-import mimetypes
+from database import JSONDatabaseManager
+from minio import Minio
+from minio.error import S3Error
+from io import BytesIO
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -28,34 +33,60 @@ app = Flask(__name__)
 # Secret key for session management
 app.secret_key = secrets.token_hex(32)
 
-# UPDATED: More comprehensive CORS configuration
-CORS(app, 
-     supports_credentials=True,
-     resources={
-         r"/*": {
-             "origins": [
-                 "http://127.0.0.1:8000",
-                 "http://localhost:8000",
-                 "http://127.0.0.1:5500",
-                 "http://localhost:5500",
-                 "null"  # For file:// protocol
-             ],
-             "allow_headers": ["Content-Type", "Authorization"],
-             "expose_headers": ["Content-Type"],
-             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "supports_credentials": True,
-             "max_age": 3600
-         }
-     }
-)
+# Enable CORS with credentials support
+CORS(app, supports_credentials=True, origins=[
+    "http://127.0.0.1:5500",
+    "http://127.0.0.1:8000",
+    "http://localhost:5500",
+    "http://localhost:8000",
+    "file://",
+    "null"
+])
+
 # Configuration: Define storage paths
 STORAGE_BASE = 'storage'
 USERS_DB = os.path.join(STORAGE_BASE, 'users.json')
 
+# Minio Configuration
+MINIO_ENDPOINT = "play.min.io"  # Change to your Minio server
+MINIO_ACCESS_KEY = "minioadmin"  # Change to your access key
+MINIO_SECRET_KEY = "minioadmin"  # Change to your secret key
+MINIO_BUCKET = "intelligent-storage"  # Your bucket name
+MINIO_SECURE = True  # Use HTTPS
+
+# Initialize Minio client
+try:
+    minio_client = Minio(
+        MINIO_ENDPOINT,
+        access_key=MINIO_ACCESS_KEY,
+        secret_key=MINIO_SECRET_KEY,
+        secure=MINIO_SECURE
+    )
+    
+    # Create bucket if it doesn't exist
+    if not minio_client.bucket_exists(MINIO_BUCKET):
+        minio_client.make_bucket(MINIO_BUCKET)
+        print(f"✓ Created Minio bucket: {MINIO_BUCKET}")
+    else:
+        print(f"✓ Minio bucket exists: {MINIO_BUCKET}")
+    
+    MINIO_ENABLED = True
+    print("✓ Minio cloud storage initialized successfully!")
+except Exception as e:
+    print(f"⚠ Warning: Minio not available - {e}")
+    print("⚠ Falling back to local storage")
+    MINIO_ENABLED = False
+
+# Ensure storage directory exists before initializing database
+if not os.path.exists(STORAGE_BASE):
+    os.makedirs(STORAGE_BASE)
+
+# Initialize Database Manager
+db_manager = JSONDatabaseManager(STORAGE_BASE)
+
 # Allowed file extensions for validation
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm'}
-ALLOWED_PDF_EXTENSIONS = {'pdf'}
 
 
 def create_storage_folders():
@@ -81,6 +112,62 @@ def get_user_storage_path(username, subfolder):
     if not os.path.exists(user_folder):
         os.makedirs(user_folder)
     return user_folder
+
+
+def upload_to_minio(file_data, object_name, content_type):
+    """
+    Upload file to Minio cloud storage
+    """
+    if not MINIO_ENABLED:
+        return False
+    
+    try:
+        # Create a BytesIO object from file data
+        file_stream = BytesIO(file_data)
+        file_size = len(file_data)
+        
+        # Upload to Minio
+        minio_client.put_object(
+            MINIO_BUCKET,
+            object_name,
+            file_stream,
+            file_size,
+            content_type=content_type
+        )
+        return True
+    except S3Error as e:
+        print(f"Minio upload error: {e}")
+        return False
+
+
+def download_from_minio(object_name):
+    """
+    Download file from Minio cloud storage
+    """
+    if not MINIO_ENABLED:
+        return None
+    
+    try:
+        response = minio_client.get_object(MINIO_BUCKET, object_name)
+        return response.read()
+    except S3Error as e:
+        print(f"Minio download error: {e}")
+        return None
+
+
+def delete_from_minio(object_name):
+    """
+    Delete file from Minio cloud storage
+    """
+    if not MINIO_ENABLED:
+        return False
+    
+    try:
+        minio_client.remove_object(MINIO_BUCKET, object_name)
+        return True
+    except S3Error as e:
+        print(f"Minio delete error: {e}")
+        return False
 
 
 def load_users():
@@ -130,30 +217,8 @@ def allowed_file(filename, file_type):
         return extension in ALLOWED_IMAGE_EXTENSIONS
     elif file_type == 'video':
         return extension in ALLOWED_VIDEO_EXTENSIONS
-    elif file_type == 'pdf':
-        return extension in ALLOWED_PDF_EXTENSIONS
     
     return False
-
-
-def detect_file_type(filename):
-    """
-    Auto-detect file type based on extension.
-    Returns: 'image', 'video', 'pdf', or None
-    """
-    if '.' not in filename:
-        return None
-    
-    extension = filename.rsplit('.', 1)[1].lower()
-    
-    if extension in ALLOWED_IMAGE_EXTENSIONS:
-        return 'image'
-    elif extension in ALLOWED_VIDEO_EXTENSIONS:
-        return 'video'
-    elif extension in ALLOWED_PDF_EXTENSIONS:
-        return 'pdf'
-    
-    return None
 
 
 def classify_json_storage(json_data):
@@ -230,6 +295,7 @@ def register():
             'email': email,
             'full_name': full_name,
             'created_at': datetime.now().isoformat(),
+            'storage_location': 'minio' if MINIO_ENABLED else 'local',
             'uploads': {
                 'images': [],
                 'videos': [],
@@ -240,7 +306,7 @@ def register():
         # Save to database
         save_users(users)
         
-        # Create user storage folders
+        # Create user storage folders (local backup)
         get_user_storage_path(username, 'images')
         get_user_storage_path(username, 'videos')
         get_user_storage_path(username, 'json_data')
@@ -248,7 +314,8 @@ def register():
         return jsonify({
             'success': True,
             'message': 'Registration successful! Please login.',
-            'username': username
+            'username': username,
+            'storage': 'Minio Cloud Storage' if MINIO_ENABLED else 'Local Storage'
         }), 201
     
     except Exception as e:
@@ -303,7 +370,8 @@ def login():
             'user': {
                 'username': username,
                 'email': users[username]['email'],
-                'full_name': users[username].get('full_name', username)
+                'full_name': users[username].get('full_name', username),
+                'storage': 'Minio Cloud' if MINIO_ENABLED else 'Local'
             }
         }), 200
     
@@ -352,7 +420,7 @@ def check_session():
 @require_login
 def upload():
     """
-    Upload endpoint - now requires authentication
+    Upload endpoint with Minio cloud storage support
     """
     try:
         username = session['username']
@@ -384,15 +452,27 @@ def upload():
                 filename = secure_filename(file.filename)
                 unique_filename = f"{timestamp}_{filename}"
                 
+                # Read file data
+                file_data = file.read()
+                
+                # Upload to Minio
+                minio_path = f"{username}/images/{unique_filename}"
+                if MINIO_ENABLED:
+                    upload_to_minio(file_data, minio_path, mime_type)
+                
+                # Save locally as backup
                 folder = get_user_storage_path(username, 'images')
                 filepath = os.path.join(folder, unique_filename)
-                file.save(filepath)
+                with open(filepath, 'wb') as f:
+                    f.write(file_data)
                 
                 # Update user record
                 users[username]['uploads']['images'].append({
                     'filename': unique_filename,
                     'comment': comment,
-                    'uploaded_at': datetime.now().isoformat()
+                    'uploaded_at': datetime.now().isoformat(),
+                    'storage': 'minio' if MINIO_ENABLED else 'local',
+                    'minio_path': minio_path if MINIO_ENABLED else None
                 })
                 save_users(users)
                 
@@ -401,7 +481,8 @@ def upload():
                     'chosen_storage': 'images',
                     'comment_received': comment if comment else '',
                     'filename': unique_filename,
-                    'message': f'Image uploaded successfully to your personal storage.'
+                    'storage_location': 'Minio Cloud' if MINIO_ENABLED else 'Local',
+                    'message': f'Image uploaded successfully to {"Minio cloud storage" if MINIO_ENABLED else "local storage"}.'
                 }), 200
             
             # Handle VIDEO files
@@ -416,15 +497,27 @@ def upload():
                 filename = secure_filename(file.filename)
                 unique_filename = f"{timestamp}_{filename}"
                 
+                # Read file data
+                file_data = file.read()
+                
+                # Upload to Minio
+                minio_path = f"{username}/videos/{unique_filename}"
+                if MINIO_ENABLED:
+                    upload_to_minio(file_data, minio_path, mime_type)
+                
+                # Save locally as backup
                 folder = get_user_storage_path(username, 'videos')
                 filepath = os.path.join(folder, unique_filename)
-                file.save(filepath)
+                with open(filepath, 'wb') as f:
+                    f.write(file_data)
                 
                 # Update user record
                 users[username]['uploads']['videos'].append({
                     'filename': unique_filename,
                     'comment': comment,
-                    'uploaded_at': datetime.now().isoformat()
+                    'uploaded_at': datetime.now().isoformat(),
+                    'storage': 'minio' if MINIO_ENABLED else 'local',
+                    'minio_path': minio_path if MINIO_ENABLED else None
                 })
                 save_users(users)
                 
@@ -433,47 +526,14 @@ def upload():
                     'chosen_storage': 'videos',
                     'comment_received': comment if comment else '',
                     'filename': unique_filename,
-                    'message': f'Video uploaded successfully to your personal storage.'
-                }), 200
-            
-            # Handle PDF files
-            elif mime_type == 'application/pdf' or file.filename.lower().endswith('.pdf'):
-                if not allowed_file(file.filename, 'pdf'):
-                    return jsonify({
-                        'error': 'Invalid PDF format',
-                        'message': 'Only PDF files are accepted.'
-                    }), 400
-                
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = secure_filename(file.filename)
-                unique_filename = f"{timestamp}_{filename}"
-                
-                folder = get_user_storage_path(username, 'pdfs')
-                filepath = os.path.join(folder, unique_filename)
-                file.save(filepath)
-                
-                # Update user record
-                if 'pdfs' not in users[username]['uploads']:
-                    users[username]['uploads']['pdfs'] = []
-                users[username]['uploads']['pdfs'].append({
-                    'filename': unique_filename,
-                    'comment': comment,
-                    'uploaded_at': datetime.now().isoformat()
-                })
-                save_users(users)
-                
-                return jsonify({
-                    'input_type': 'pdf',
-                    'chosen_storage': 'pdfs',
-                    'comment_received': comment if comment else '',
-                    'filename': unique_filename,
-                    'message': f'PDF uploaded successfully to your personal storage.'
+                    'storage_location': 'Minio Cloud' if MINIO_ENABLED else 'Local',
+                    'message': f'Video uploaded successfully to {"Minio cloud storage" if MINIO_ENABLED else "local storage"}.'
                 }), 200
             
             else:
                 return jsonify({
                     'error': 'Unsupported file type',
-                    'message': f'Supported: images, videos, and PDFs. Received: {mime_type}'
+                    'message': f'Only images and videos are accepted. Received: {mime_type}'
                 }), 400
         
         # Handle JSON data
@@ -493,18 +553,37 @@ def upload():
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 json_filename = f"data_{timestamp}.json"
                 
+                # Save to local file
                 folder = get_user_storage_path(username, 'json_data')
                 json_filepath = os.path.join(folder, json_filename)
                 
                 with open(json_filepath, 'w', encoding='utf-8') as json_file:
                     json.dump(parsed_json, json_file, indent=2, ensure_ascii=False)
                 
+                # Upload to Minio
+                minio_path = f"{username}/json_data/{json_filename}"
+                if MINIO_ENABLED:
+                    json_bytes = json.dumps(parsed_json, indent=2).encode('utf-8')
+                    upload_to_minio(json_bytes, minio_path, 'application/json')
+                
+                # Store in database
+                entry_id = db_manager.store_json(
+                    username=username,
+                    filename=json_filename,
+                    storage_type=storage_type,
+                    json_data=parsed_json,
+                    comment=comment
+                )
+                
                 # Update user record
                 users[username]['uploads']['json_data'].append({
                     'filename': json_filename,
                     'storage_type': storage_type,
                     'comment': comment,
-                    'uploaded_at': datetime.now().isoformat()
+                    'entry_id': entry_id,
+                    'uploaded_at': datetime.now().isoformat(),
+                    'storage': 'minio' if MINIO_ENABLED else 'local',
+                    'minio_path': minio_path if MINIO_ENABLED else None
                 })
                 save_users(users)
                 
@@ -518,7 +597,8 @@ def upload():
                     'chosen_storage': storage_type,
                     'comment_received': comment if comment else '',
                     'filename': json_filename,
-                    'message': f'JSON data saved successfully. {explanation}'
+                    'storage_location': 'Minio Cloud' if MINIO_ENABLED else 'Local',
+                    'message': f'JSON data saved successfully to {"Minio cloud storage" if MINIO_ENABLED else "local storage"}. {explanation}'
                 }), 200
             
             except json.JSONDecodeError as e:
@@ -552,13 +632,15 @@ def retrieve_data():
         images_folder = get_user_storage_path(username, 'images')
         videos_folder = get_user_storage_path(username, 'videos')
         json_folder = get_user_storage_path(username, 'json_data')
-        pdfs_folder = get_user_storage_path(username, 'pdfs')
         
         result = {
             'images': os.listdir(images_folder) if os.path.exists(images_folder) else [],
             'videos': os.listdir(videos_folder) if os.path.exists(videos_folder) else [],
             'json_data': os.listdir(json_folder) if os.path.exists(json_folder) else [],
-            'pdfs': os.listdir(pdfs_folder) if os.path.exists(pdfs_folder) else []
+            'storage_info': {
+                'enabled': MINIO_ENABLED,
+                'type': 'Minio Cloud Storage' if MINIO_ENABLED else 'Local Storage'
+            }
         }
         
         return jsonify(result), 200
@@ -569,20 +651,75 @@ def retrieve_data():
             'message': str(e)
         }), 500
 
-@app.route('/public/<path:username>/<path:folder>/<path:filename>', methods=['GET'])
-def serve_public_file(username, folder, filename):
-    folder_path = os.path.abspath(os.path.join(STORAGE_BASE, username, folder))
-    if not folder_path.startswith(os.path.abspath(STORAGE_BASE)):
-        return jsonify({'error': 'Invalid path'}), 400
-    if not os.path.exists(folder_path):
-        return jsonify({'error': 'Folder not found'}), 404
-    return send_from_directory(folder_path, filename)
 
 @app.route('/storage/<path:username>/<path:folder>/<path:filename>')
 @require_login
 def serve_file(username, folder, filename):
     """
-    Serve user's uploaded files (with authorization check)
+    Serve user's uploaded files (with Minio support)
+    """
+    try:
+        # Check if user is accessing their own files
+        if session['username'] != username:
+            print(f"Unauthorized access attempt: {session['username']} trying to access {username}'s files")
+            return jsonify({
+                'error': 'Unauthorized',
+                'message': 'You can only access your own files'
+            }), 403
+        
+        print(f"Serving file: {username}/{folder}/{filename}")
+        
+        # Try to get from Minio first
+        if MINIO_ENABLED:
+            minio_path = f"{username}/{folder}/{filename}"
+            print(f"Attempting to download from Minio: {minio_path}")
+            file_data = download_from_minio(minio_path)
+            
+            if file_data:
+                print(f"File retrieved from Minio, size: {len(file_data)} bytes")
+                # Determine content type
+                mime_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+                print(f"Serving with mime type: {mime_type}")
+                return send_file(
+                    BytesIO(file_data),
+                    mimetype=mime_type,
+                    as_attachment=False,
+                    download_name=filename
+                )
+            else:
+                print(f"File not found in Minio, trying local storage")
+        
+        # Fallback to local storage
+        folder_path = os.path.join(STORAGE_BASE, username, folder)
+        file_path = os.path.join(folder_path, filename)
+        print(f"Trying local storage: {file_path}")
+        
+        if os.path.exists(file_path):
+            print(f"Serving from local storage")
+            return send_from_directory(folder_path, filename)
+        else:
+            print(f"File not found in local storage")
+            raise FileNotFoundError()
+            
+    except FileNotFoundError:
+        print(f"File not found: {username}/{folder}/{filename}")
+        return jsonify({
+            'error': 'File not found',
+            'message': f'The requested file does not exist'
+        }), 404
+    except Exception as e:
+        print(f"Error serving file: {str(e)}")
+        return jsonify({
+            'error': 'Server error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/storage-raw/<path:username>/<path:folder>/<path:filename>')
+@require_login
+def serve_file_raw(username, folder, filename):
+    """
+    Serve raw file without HTML wrapper
     """
     try:
         # Check if user is accessing their own files
@@ -592,101 +729,89 @@ def serve_file(username, folder, filename):
                 'message': 'You can only access your own files'
             }), 403
         
-        # Validate folder path
-        if folder not in ['images', 'videos', 'json_data', 'pdfs']:
-            return jsonify({
-                'error': 'Invalid folder',
-                'message': 'Invalid storage folder'
-            }), 400
+        # Try Minio first
+        if MINIO_ENABLED:
+            minio_path = f"{username}/{folder}/{filename}"
+            file_data = download_from_minio(minio_path)
+            
+            if file_data:
+                mime_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+                return send_file(
+                    BytesIO(file_data),
+                    mimetype=mime_type,
+                    as_attachment=False,
+                    download_name=filename
+                )
         
-        # Build the full file path
+        # Fallback to local
         folder_path = os.path.join(STORAGE_BASE, username, folder)
-        file_path = os.path.join(folder_path, filename)
-        
-        # Normalize paths to prevent directory traversal
-        folder_path = os.path.abspath(folder_path)
-        file_path = os.path.abspath(file_path)
-        
-        # Ensure file is within the storage folder
-        if not file_path.startswith(folder_path):
-            return jsonify({
-                'error': 'Invalid path',
-                'message': 'Access denied'
-            }), 403
-        
-        # Check if file exists
-        if not os.path.exists(file_path) or not os.path.isfile(file_path):
-            return jsonify({
-                'error': 'File not found',
-                'message': f'The file {filename} does not exist'
-            }), 404
-        
-        # Serve the file directly using send_file
-        mimetype = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
-        return send_file(file_path, mimetype=mimetype, as_attachment=False)
+        return send_from_directory(folder_path, filename)
     
-    except Exception as e:
-        print(f"Error serving file {filename}: {str(e)}")
+    except FileNotFoundError:
         return jsonify({
-            'error': 'Server error',
-            'message': f'Failed to serve file: {str(e)}'
-        }), 500
+            'error': 'File not found',
+            'message': f'The requested file does not exist'
+        }), 404
 
 
 @app.route('/download/<path:username>/<path:folder>/<path:filename>')
 @require_login
 def download_file(username, folder, filename):
     """
-    Download user's uploaded files (with authorization check and force download)
+    Download user's uploaded files (forces download instead of preview)
     """
     try:
         # Check if user is accessing their own files
         if session['username'] != username:
+            print(f"Unauthorized download attempt: {session['username']} trying to download {username}'s files")
             return jsonify({
                 'error': 'Unauthorized',
                 'message': 'You can only access your own files'
             }), 403
         
-        # Validate folder
-        if folder not in ['images', 'videos', 'json_data', 'pdfs']:
-            return jsonify({
-                'error': 'Invalid folder',
-                'message': 'Invalid storage folder'
-            }), 400
+        print(f"Downloading file: {username}/{folder}/{filename}")
         
-        # Build the full file path
+        # Try to get from Minio first
+        if MINIO_ENABLED:
+            minio_path = f"{username}/{folder}/{filename}"
+            print(f"Attempting to download from Minio: {minio_path}")
+            file_data = download_from_minio(minio_path)
+            
+            if file_data:
+                print(f"File retrieved from Minio for download, size: {len(file_data)} bytes")
+                # Determine content type
+                mime_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+                return send_file(
+                    BytesIO(file_data),
+                    mimetype=mime_type,
+                    as_attachment=True,  # Force download
+                    download_name=filename
+                )
+            else:
+                print(f"File not found in Minio for download, trying local storage")
+        
+        # Fallback to local storage
         folder_path = os.path.join(STORAGE_BASE, username, folder)
         file_path = os.path.join(folder_path, filename)
+        print(f"Trying local storage for download: {file_path}")
         
-        # Normalize paths to prevent directory traversal
-        folder_path = os.path.abspath(folder_path)
-        file_path = os.path.abspath(file_path)
-        
-        # Ensure file is within the storage folder
-        if not file_path.startswith(folder_path):
-            return jsonify({
-                'error': 'Invalid path',
-                'message': 'Access denied'
-            }), 403
-        
-        # Check if file exists
-        if not os.path.exists(file_path) or not os.path.isfile(file_path):
-            return jsonify({
-                'error': 'File not found',
-                'message': f'The file {filename} does not exist'
-            }), 404
-        
-        # Download the file using send_file
-        mimetype = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
-        return send_file(
-            file_path,
-            mimetype=mimetype,
-            as_attachment=True,
-            download_name=filename
-        )
-    
+        if os.path.exists(file_path):
+            print(f"Downloading from local storage")
+            return send_from_directory(folder_path, filename, as_attachment=True)
+        else:
+            print(f"File not found in local storage for download")
+            raise FileNotFoundError()
+            
+    except FileNotFoundError:
+        print(f"Download failed - file not found: {username}/{folder}/{filename}")
+        return jsonify({
+            'error': 'File not found',
+            'message': f'The requested file does not exist'
+        }), 404
     except Exception as e:
-        print(f"Error downloading file {filename}: {str(e)}")
+        print(f"Download error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'error': 'Download failed',
             'message': str(e)
@@ -709,8 +834,8 @@ def dashboard_stats():
         stats = {
             'total_images': len(uploads.get('images', [])),
             'total_videos': len(uploads.get('videos', [])),
-            'total_pdfs': len(uploads.get('pdfs', [])),
             'total_json': len(uploads.get('json_data', [])),
+            'storage_type': 'Minio Cloud' if MINIO_ENABLED else 'Local',
             'recent_uploads': []
         }
         
@@ -720,8 +845,6 @@ def dashboard_stats():
             all_uploads.append({**img, 'type': 'image'})
         for vid in uploads.get('videos', []):
             all_uploads.append({**vid, 'type': 'video'})
-        for pdf in uploads.get('pdfs', []):
-            all_uploads.append({**pdf, 'type': 'pdf'})
         for js in uploads.get('json_data', []):
             all_uploads.append({**js, 'type': 'json'})
         
@@ -738,6 +861,104 @@ def dashboard_stats():
         }), 500
 
 
+@app.route('/json-database', methods=['GET'])
+@require_login
+def get_json_database():
+    """
+    Get all JSON database entries for the logged-in user
+    """
+    try:
+        username = session['username']
+        entries = db_manager.get_user_json_entries(username)
+        
+        return jsonify({
+            'success': True,
+            'entries': entries,
+            'count': len(entries)
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to load database',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/json-database/<int:entry_id>', methods=['GET'])
+@require_login
+def get_json_entry(entry_id):
+    """
+    Get a specific JSON database entry by ID with flattened data for SQL type
+    """
+    try:
+        username = session['username']
+        entry = db_manager.get_entry_by_id(entry_id, username)
+        
+        if not entry:
+            return jsonify({
+                'error': 'Not found',
+                'message': 'Entry not found or access denied'
+            }), 404
+        
+        # If SQL type, include flattened data
+        if entry['storage_type'] == 'sql':
+            entry['flattened_data'] = db_manager.get_flattened_data(entry_id)
+        
+        return jsonify({
+            'success': True,
+            'entry': entry
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to load entry',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/json-database/<int:entry_id>', methods=['DELETE'])
+@require_login
+def delete_json_entry(entry_id):
+    """
+    Delete a specific JSON database entry by ID
+    """
+    try:
+        username = session['username']
+        
+        # Verify the entry exists and belongs to the user
+        entry = db_manager.get_entry_by_id(entry_id, username)
+        if not entry:
+            return jsonify({
+                'error': 'Not found',
+                'message': 'Entry not found or access denied'
+            }), 404
+        
+        # Delete from Minio if enabled
+        if MINIO_ENABLED:
+            minio_path = f"{username}/json_data/{entry['filename']}"
+            delete_from_minio(minio_path)
+        
+        # Delete the entry
+        success = db_manager.delete_entry(entry_id, username)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Entry deleted successfully'
+            }), 200
+        else:
+            return jsonify({
+                'error': 'Delete failed',
+                'message': 'Failed to delete entry'
+            }), 500
+    
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to delete entry',
+            'message': str(e)
+        }), 500
+
+
 # ==================== PUBLIC ROUTES ====================
 
 @app.route('/', methods=['GET'])
@@ -747,8 +968,9 @@ def home():
     """
     return jsonify({
         'project': 'Intelligent Multi-Modal Storage System',
-        'version': '2.0 with Authentication',
+        'version': '3.0 with Minio Cloud Storage',
         'status': 'running',
+        'storage': 'Minio Cloud' if MINIO_ENABLED else 'Local',
         'endpoints': {
             'register': '/register (POST)',
             'login': '/login (POST)',
@@ -766,18 +988,20 @@ def health_check():
     """
     return jsonify({
         'status': 'healthy',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'storage': 'minio' if MINIO_ENABLED else 'local'
     }), 200
 
 
 if __name__ == '__main__':
     print("=" * 50)
-    print("Intelligent Multi-Modal Storage System v2.0")
-    print("With User Authentication")
+    print("Intelligent Multi-Modal Storage System v3.0")
+    print("With Minio Cloud Storage Integration")
     print("=" * 50)
     create_storage_folders()
     print("\n✓ Server initialization complete!")
     print("✓ Authentication enabled")
+    print(f"✓ Storage: {'Minio Cloud' if MINIO_ENABLED else 'Local Filesystem'}")
     print("✓ Listening on: http://127.0.0.1:5000")
     print("=" * 50)
     

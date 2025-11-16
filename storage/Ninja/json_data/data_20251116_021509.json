@@ -1,0 +1,9 @@
+{
+  "emp_id": "EMP5678",
+  "name": "Priya Patel",
+  "designation": "Software Engineer",
+  "department": "IT",
+  "salary": 75000,
+  "joining_date": "2023-01-15",
+  "experience_years": 3
+}

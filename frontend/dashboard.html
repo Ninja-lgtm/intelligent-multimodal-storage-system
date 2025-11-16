@@ -136,6 +136,11 @@
                 <button type="button" class="retrieve-btn" onclick="retrieveData()">
                     📂 View My Files
                 </button>
+
+                <!-- View JSON Database Button -->
+                <button type="button" class="retrieve-btn" onclick="viewJsonDatabase()" style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);">
+                    📊 View JSON Database
+                </button>
             </form>
         </div>
 
@@ -157,7 +162,7 @@
                         <source id="modalVideoSource" src="" type="">
                     </video>
                     <iframe id="modalPdf" src="" style="display: none; width: 100%; height: 70vh; border: none; border-radius: 8px;"></iframe>
-                    <pre id="modalJson" style="display: none;"></pre>
+                    <div id="modalJson" style="display: none;"></div>
                 </div>
                 <div class="modal-footer">
                     <a id="modalDownload" href="" download class="modal-btn download-btn">⬇️ Download</a>
@@ -212,15 +217,54 @@
                 modalPdf.style.display = 'block';
                 modalTitle.textContent = '📄 ' + filename;
             } else if (fileType === 'json') {
+                console.log('Loading JSON file:', filename);
+                modalJson.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading JSON...</p></div>';
+                modalJson.style.display = 'block';
+                
                 fetch(fileUrl, { credentials: 'include' })
-                    .then(res => res.json())
+                    .then(res => {
+                        console.log('JSON response received');
+                        return res.json();
+                    })
                     .then(data => {
-                        modalJson.textContent = JSON.stringify(data, null, 2);
-                        modalJson.style.display = 'block';
+                        console.log('JSON data parsed:', data);
+                        
+                        // Create tabs for JSON and Table view
+                        const tabContainer = document.createElement('div');
+                        tabContainer.className = 'json-view-tabs';
+                        tabContainer.style.cssText = 'display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; background: #f9fafb; padding: 10px; border-radius: 8px 8px 0 0;';
+                        tabContainer.innerHTML = `
+                            <button class="json-tab-btn active" onclick="switchJsonView('json-view-modal', this)" style="padding: 14px 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 8px; color: white; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">📄 JSON Format</button>
+                            <button class="json-tab-btn" onclick="switchJsonView('table-view-modal', this)" style="padding: 14px 28px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; color: #6b7280; font-weight: 700; font-size: 14px; cursor: pointer;">📊 Table Format</button>
+                        `;
+                        
+                        // JSON View
+                        const jsonView = document.createElement('div');
+                        jsonView.id = 'json-view-modal';
+                        jsonView.className = 'json-content-view active';
+                        jsonView.style.display = 'block';
+                        jsonView.innerHTML = `<pre style="background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; overflow-x: auto; max-height: 60vh;">${JSON.stringify(data, null, 2)}</pre>`;
+                        
+                        // Table View
+                        const tableView = document.createElement('div');
+                        tableView.id = 'table-view-modal';
+                        tableView.className = 'json-content-view';
+                        tableView.style.display = 'none';
+                        tableView.innerHTML = generateTableFromJSON(data);
+                        
+                        console.log('Appending tabs and content to modal');
+                        
+                        // Clear and append new content
+                        modalJson.innerHTML = '';
+                        modalJson.appendChild(tabContainer);
+                        modalJson.appendChild(jsonView);
+                        modalJson.appendChild(tableView);
+                        
+                        console.log('JSON viewer ready');
                     })
                     .catch(err => {
-                        modalJson.textContent = 'Error loading JSON: ' + err.message;
-                        modalJson.style.display = 'block';
+                        console.error('Error loading JSON:', err);
+                        modalJson.innerHTML = `<p style="color: #ef4444; text-align: center; padding: 20px;">Error loading JSON: ${err.message}</p>`;
                     });
                 modalTitle.textContent = '📊 ' + filename;
             }
@@ -232,11 +276,15 @@
         function closeModal() {
             const modal = document.getElementById('mediaModal');
             const modalVideo = document.getElementById('modalVideo');
+            const modalDownload = document.getElementById('modalDownload');
             
             // Stop video if playing
             if (modalVideo) {
                 modalVideo.pause();
             }
+
+            // Reset download button visibility
+            modalDownload.style.display = '';
 
             modal.style.display = 'none';
             document.body.style.overflow = 'auto'; // Re-enable scrolling
@@ -256,6 +304,209 @@
                 closeModal();
             }
         });
+
+        function switchJsonView(viewId, buttonElement) {
+            console.log('Switching to view:', viewId);
+            
+            // Update tab buttons - remove active from all
+            const buttons = buttonElement.parentElement.querySelectorAll('.json-tab-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = 'white';
+                btn.style.border = '2px solid #e5e7eb';
+                btn.style.color = '#6b7280';
+                btn.style.boxShadow = 'none';
+            });
+            
+            // Add active to clicked button
+            buttonElement.classList.add('active');
+            buttonElement.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            buttonElement.style.border = 'none';
+            buttonElement.style.color = 'white';
+            buttonElement.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
+            
+            // Update content views - hide all
+            const container = buttonElement.parentElement.parentElement;
+            const views = container.querySelectorAll('.json-content-view');
+            views.forEach(view => {
+                view.classList.remove('active');
+                view.style.display = 'none';
+            });
+            
+            // Show selected view
+            const selectedView = document.getElementById(viewId);
+            if (selectedView) {
+                selectedView.classList.add('active');
+                selectedView.style.display = 'block';
+                console.log('View switched successfully to:', viewId);
+            } else {
+                console.error('View not found:', viewId);
+            }
+        }
+
+        function generateTableFromJSON(data) {
+            console.log('Generating table for data:', data);
+            console.log('Data type:', typeof data, 'Is Array:', Array.isArray(data));
+            
+            let html = '<div style="overflow-x: auto; max-height: 60vh;">';
+            
+            // Handle array of objects (typical NoSQL/SQL result set)
+            if (Array.isArray(data)) {
+                console.log('Processing array with', data.length, 'items');
+                
+                if (data.length === 0) {
+                    return '<p style="text-align: center; color: #6b7280; padding: 20px;">Empty array</p>';
+                }
+                
+                // Check if array contains objects
+                if (typeof data[0] === 'object' && data[0] !== null && !Array.isArray(data[0])) {
+                    console.log('Array contains objects - creating multi-column table');
+                    
+                    // Get all unique keys from all objects
+                    const allKeys = new Set();
+                    data.forEach(item => {
+                        if (typeof item === 'object' && item !== null) {
+                            Object.keys(item).forEach(key => allKeys.add(key));
+                        }
+                    });
+                    const keys = Array.from(allKeys);
+                    
+                    console.log('Table columns:', keys);
+                    
+                    html += `
+                        <table class="json-table">
+                            <thead>
+                                <tr>
+                                    <th style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">#</th>
+                                    ${keys.map(key => `<th style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">${escapeHtml(key)}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.forEach((item, index) => {
+                        html += `<tr>`;
+                        html += `<td class="row-number">${index + 1}</td>`;
+                        keys.forEach(key => {
+                            const value = item[key];
+                            html += `<td>${formatTableCell(value)}</td>`;
+                        });
+                        html += `</tr>`;
+                    });
+                    
+                    html += `</tbody></table>`;
+                } else {
+                    console.log('Array contains primitives - creating 2-column table');
+                    // Array of primitives
+                    html += `
+                        <table class="json-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.forEach((item, index) => {
+                        html += `
+                            <tr>
+                                <td class="row-number">${index + 1}</td>
+                                <td>${formatTableCell(item)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `</tbody></table>`;
+                }
+            }
+            // Handle single object (SQL-style flat structure)
+            else if (typeof data === 'object' && data !== null) {
+                console.log('Processing single object - creating key-value table');
+                
+                html += `
+                    <table class="json-table">
+                        <thead>
+                            <tr>
+                                <th style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">Field</th>
+                                <th style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                Object.entries(data).forEach(([key, value]) => {
+                    html += `
+                        <tr>
+                            <td class="field-name">${escapeHtml(key)}</td>
+                            <td>${formatTableCell(value)}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `</tbody></table>`;
+            }
+            // Handle primitive values
+            else {
+                html += `
+                    <table class="json-table">
+                        <thead>
+                            <tr>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>${formatTableCell(data)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        function formatTableCell(value) {
+            if (value === null) {
+                return '<span class="null-value">NULL</span>';
+            }
+            if (value === undefined) {
+                return '<span class="null-value">UNDEFINED</span>';
+            }
+            if (typeof value === 'boolean') {
+                return `<span class="boolean-value">${value ? 'TRUE' : 'FALSE'}</span>`;
+            }
+            if (typeof value === 'number') {
+                return `<span class="number-value">${value}</span>`;
+            }
+            if (typeof value === 'string') {
+                return `<span class="string-value">${escapeHtml(value)}</span>`;
+            }
+            if (Array.isArray(value)) {
+                return `<span class="array-value">[${value.length} items]</span>
+                        <details style="margin-top: 5px;">
+                            <summary style="cursor: pointer; color: #667eea;">View items</summary>
+                            <pre style="margin-top: 5px; background: #f3f4f6; padding: 10px; border-radius: 4px; font-size: 12px;">${JSON.stringify(value, null, 2)}</pre>
+                        </details>`;
+            }
+            if (typeof value === 'object') {
+                return `<span class="object-value">{${Object.keys(value).length} fields}</span>
+                        <details style="margin-top: 5px;">
+                            <summary style="cursor: pointer; color: #667eea;">View object</summary>
+                            <pre style="margin-top: 5px; background: #f3f4f6; padding: 10px; border-radius: 4px; font-size: 12px;">${JSON.stringify(value, null, 2)}</pre>
+                        </details>`;
+            }
+            return escapeHtml(String(value));
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
         // Check authentication on page load
         window.addEventListener('load', async function() {
@@ -649,6 +900,89 @@
             addCloseButton(resultDiv);
         }
 
+        // TEST FUNCTION - Test JSON Viewer without uploading
+        function testJsonViewer() {
+            console.log('Testing JSON viewer...');
+            
+            // Sample SQL-style JSON data
+            const sqlData = {
+                "user_id": 1001,
+                "name": "Kumar Amityush",
+                "email": "kumar@example.com",
+                "age": 22,
+                "city": "Mumbai",
+                "course": "Computer Science"
+            };
+            
+            // Sample NoSQL-style JSON data
+            const nosqlData = [
+                {"name": "Student1", "marks": 85, "grade": "A", "subjects": ["Math", "Physics"]},
+                {"name": "Student2", "marks": 92, "grade": "A+", "subjects": ["Chemistry", "Biology"]}
+            ];
+            
+            // Ask user which to test
+            const choice = confirm("Click OK for SQL-style data, Cancel for NoSQL-style array");
+            const testData = choice ? sqlData : nosqlData;
+            
+            // Directly populate the modal
+            const modal = document.getElementById('mediaModal');
+            const modalJson = document.getElementById('modalJson');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalDownload = document.getElementById('modalDownload');
+            const modalImage = document.getElementById('modalImage');
+            const modalVideo = document.getElementById('modalVideo');
+            const modalPdf = document.getElementById('modalPdf');
+            
+            // Hide other content types
+            modalImage.style.display = 'none';
+            modalVideo.style.display = 'none';
+            modalPdf.style.display = 'none';
+            modalJson.style.display = 'block';
+            
+            // Hide download button for test
+            modalDownload.style.display = 'none';
+            
+            // Set title
+            modalTitle.textContent = '🧪 Test JSON Viewer (' + (choice ? 'SQL' : 'NoSQL') + ')';
+            
+            // Create tabs for JSON and Table view
+            const tabContainer = document.createElement('div');
+            tabContainer.className = 'json-view-tabs';
+            tabContainer.style.cssText = 'display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb;';
+            tabContainer.innerHTML = `
+                <button class="json-tab-btn active" onclick="switchJsonView('json-view-modal', this)" style="padding: 12px 24px; background: rgba(102, 126, 234, 0.1); border: none; border-bottom: 3px solid #667eea; color: #667eea; font-weight: 600; cursor: pointer;">📄 JSON Format</button>
+                <button class="json-tab-btn" onclick="switchJsonView('table-view-modal', this)" style="padding: 12px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: #6b7280; font-weight: 600; cursor: pointer;">📊 Table Format</button>
+            `;
+            
+            // JSON View
+            const jsonView = document.createElement('div');
+            jsonView.id = 'json-view-modal';
+            jsonView.className = 'json-content-view active';
+            jsonView.style.display = 'block';
+            jsonView.innerHTML = `<pre style="background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; overflow-x: auto; max-height: 60vh;">${JSON.stringify(testData, null, 2)}</pre>`;
+            
+            // Table View
+            const tableView = document.createElement('div');
+            tableView.id = 'table-view-modal';
+            tableView.className = 'json-content-view';
+            tableView.style.display = 'none';
+            tableView.innerHTML = generateTableFromJSON(testData);
+            
+            console.log('Populating modal with test data...');
+            
+            // Clear and append new content
+            modalJson.innerHTML = '';
+            modalJson.appendChild(tabContainer);
+            modalJson.appendChild(jsonView);
+            modalJson.appendChild(tableView);
+            
+            // Show modal
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            console.log('Test modal displayed. Check if tabs are visible!');
+        }
+
         function addCloseButton(resultDiv) {
             if (resultDiv.querySelector('.close-result-btn')) return;
             
@@ -781,6 +1115,7 @@
                                         <h4 class="file-category-title">JSON Data</h4>
                                         <span class="file-count">${data.json_data.length}</span>
                                     </div>
+                                    ${data.json_data.length > 0 ? '<p style="color: #6b7280; font-size: 13px; margin: -10px 0 15px 0; padding-left: 5px;">💡 Click "View" to see JSON & Table format tabs</p>' : ''}
                                     ${createFileList(data.json_data, 'json', 'json_data')}
                                 </div>
                             </div>
@@ -802,6 +1137,257 @@
                         </div>
                     </div>`;
                 addCloseButton(resultDiv);
+            }
+        }
+
+        async function viewJsonDatabase() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading JSON database...</p></div>`;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/json-database', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to load database');
+                }
+
+                displayJsonDatabase(data.entries);
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result-card error-card">
+                        <div class="result-header error">
+                            <span class="result-icon">❌</span>
+                            <h3>Error</h3>
+                        </div>
+                        <div class="result-body">
+                            <p>Failed to load JSON database: ${error.message}</p>
+                        </div>
+                    </div>`;
+                addCloseButton(resultDiv);
+            }
+        }
+
+        function displayJsonDatabase(entries) {
+            const resultDiv = document.getElementById('result');
+
+            if (entries.length === 0) {
+                resultDiv.innerHTML = `
+                    <div class="result-card success-card">
+                        <div class="result-header success">
+                            <span class="result-icon">📊</span>
+                            <h3>JSON Database</h3>
+                        </div>
+                        <div class="result-body">
+                            <div class="json-empty-state">
+                                <div class="json-empty-icon">📊</div>
+                                <div class="json-empty-text">No JSON Data Yet</div>
+                                <div class="json-empty-hint">Upload JSON data to see it here in a tabular format</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                addCloseButton(resultDiv);
+                return;
+            }
+
+            // Create table HTML
+            let tableRows = '';
+            entries.forEach((entry, index) => {
+                const uploadDate = new Date(entry.uploaded_at).toLocaleString();
+                const typeBadge = entry.storage_type === 'sql' 
+                    ? '<span class="json-type-badge json-type-sql">🗄️ SQL</span>'
+                    : '<span class="json-type-badge json-type-nosql">📦 NoSQL</span>';
+
+                tableRows += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${entry.filename}</td>
+                        <td>${typeBadge}</td>
+                        <td>${entry.comment || '<em style="color: #9ca3af;">No comment</em>'}</td>
+                        <td>${uploadDate}</td>
+                        <td>
+                            <div class="json-actions-cell">
+                                <button class="json-action-btn json-view-btn" onclick="viewJsonDetail(${entry.id})">
+                                    👁️ View
+                                </button>
+                                <button class="json-action-btn json-delete-btn" onclick="deleteJsonEntry(${entry.id})">
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            resultDiv.innerHTML = `
+                <div class="result-card success-card">
+                    <div class="result-header success">
+                        <span class="result-icon">📊</span>
+                        <h3>JSON Database (${entries.length} entries)</h3>
+                    </div>
+                    <div class="result-body">
+                        <div class="json-table-container" style="padding: 0;">
+                            <div class="json-table-wrapper">
+                                <table class="json-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 60px;">#</th>
+                                            <th>Filename</th>
+                                            <th style="width: 120px;">Type</th>
+                                            <th>Comment</th>
+                                            <th style="width: 180px;">Upload Date</th>
+                                            <th style="width: 200px;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${tableRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            addCloseButton(resultDiv);
+        }
+
+        async function viewJsonDetail(entryId) {
+            try {
+                const response = await fetch(`http://127.0.0.1:5000/json-database/${entryId}`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to load entry');
+                }
+
+                const entry = data.entry;
+                const uploadDate = new Date(entry.uploaded_at).toLocaleString();
+
+                // Create modal
+                const modal = document.createElement('div');
+                modal.className = 'json-detail-modal';
+                modal.onclick = function(e) {
+                    if (e.target === modal) {
+                        modal.remove();
+                    }
+                };
+
+                let dataDisplay = '';
+
+                if (entry.storage_type === 'sql' && entry.flattened_data) {
+                    // Display as flat table
+                    let tableRows = '';
+                    entry.flattened_data.forEach(item => {
+                        tableRows += `
+                            <tr>
+                                <td style="font-weight: 600;">${item.key}</td>
+                                <td>${item.value}</td>
+                                <td><span style="color: #6b7280; font-size: 12px;">${item.type}</span></td>
+                            </tr>
+                        `;
+                    });
+
+                    dataDisplay = `
+                        <div class="json-data-section">
+                            <div class="json-section-title">
+                                🗄️ SQL Format - Key-Value Pairs
+                            </div>
+                            <table class="json-flat-table">
+                                <thead>
+                                    <tr>
+                                        <th>Key</th>
+                                        <th>Value</th>
+                                        <th>Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tableRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    // Display as JSON tree
+                    dataDisplay = `
+                        <div class="json-data-section">
+                            <div class="json-section-title">
+                                📦 NoSQL Format - Hierarchical Structure
+                            </div>
+                            <div class="json-tree">
+                                <pre>${JSON.stringify(entry.json_data, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                modal.innerHTML = `
+                    <div class="json-detail-content">
+                        <div class="json-detail-header">
+                            <h3>📄 ${entry.filename}</h3>
+                            <div class="json-detail-meta">
+                                <span><strong>Type:</strong> ${entry.storage_type.toUpperCase()}</span>
+                                <span><strong>Uploaded:</strong> ${uploadDate}</span>
+                            </div>
+                        </div>
+                        <div class="json-detail-body">
+                            ${dataDisplay}
+                            ${entry.comment ? `
+                                <div class="json-comment-box">
+                                    <strong>💬 Comment:</strong>
+                                    <p>${entry.comment}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="modal-footer">
+                            <a href="http://127.0.0.1:5000/storage/${currentUser.username}/json_data/${entry.filename}" 
+                               download 
+                               class="modal-btn download-btn">
+                                ⬇️ Download JSON
+                            </a>
+                            <button onclick="this.closest('.json-detail-modal').remove()" class="modal-btn close-btn">
+                                ✖ Close
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+            } catch (error) {
+                alert('Error loading JSON details: ' + error.message);
+            }
+        }
+
+        async function deleteJsonEntry(entryId) {
+            if (!confirm('Are you sure you want to delete this JSON entry? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://127.0.0.1:5000/json-database/${entryId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('✅ Entry deleted successfully!');
+                    // Reload the database view
+                    viewJsonDatabase();
+                    // Reload stats
+                    loadDashboardStats();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                alert('Error deleting entry: ' + error.message);
             }
         }
     </script>

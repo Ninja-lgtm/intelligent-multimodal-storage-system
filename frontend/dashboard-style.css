@@ -975,14 +975,15 @@ html {
 .modal-content {
     background: white;
     border-radius: 16px;
-    width: 100%;
-    max-width: 900px;
-    max-height: 90vh;
+    width: 95%;
+    max-width: 1200px;
+    max-height: 95vh;
     display: flex;
     flex-direction: column;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     animation: slideUp 0.3s ease-out;
     margin: auto;
+    overflow: hidden;
 }
 
 @keyframes slideUp {
@@ -1042,43 +1043,29 @@ html {
 .modal-body {
     padding: 25px;
     overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 200px;
+    min-height: 300px;
+    max-height: calc(95vh - 180px);
 }
 
-.modal-body img {
-    max-width: 100%;
-    max-height: 70vh;
-    width: auto;
-    height: auto;
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.modal-body video {
-    max-width: 100%;
-    max-height: 70vh;
-    width: auto;
-    height: auto;
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.modal-body pre {
-    background: #1f2937;
-    color: #f9fafb;
-    padding: 20px;
-    border-radius: 8px;
-    overflow-x: auto;
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    line-height: 1.6;
+.modal-body > #modalJson {
     width: 100%;
-    max-height: 60vh;
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.modal-body img,
+.modal-body video {
+    align-self: center;
+    max-width: 100%;
+    max-height: 70vh;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    margin: 0 auto;
 }
 
 .modal-footer {
@@ -1089,6 +1076,7 @@ html {
     justify-content: flex-end;
     background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
     border-radius: 0 0 16px 16px;
+    flex-shrink: 0;
 }
 
 .modal-footer a,
@@ -1156,6 +1144,517 @@ body.modal-open {
     .modal-footer button {
         width: 100%;
         justify-content: center;
+    }
+}
+
+/* ========== JSON Table Viewer ========== */
+.json-table-container {
+    margin-top: 30px;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.json-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.json-table-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.json-table-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.json-filter-btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: 2px solid #e5e7eb;
+    background: white;
+    color: #6b7280;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.json-filter-btn.active {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border-color: var(--primary);
+}
+
+.json-filter-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Responsive Table */
+.json-table-wrapper {
+    overflow-x: auto;
+}
+
+.json-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 2px solid #e5e7eb;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.json-table thead {
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+}
+
+.json-table th {
+    padding: 18px 20px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--dark);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.json-table tbody tr {
+    transition: all 0.3s ease;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.json-table tbody tr:hover {
+    background: #f9fafb;
+    transform: scale(1.01);
+}
+
+.json-table td {
+    padding: 16px 20px;
+    font-size: 14px;
+    color: #4b5563;
+}
+
+.json-type-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.json-type-sql {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+}
+
+.json-type-nosql {
+    background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+    color: #be185d;
+}
+
+.json-actions-cell {
+    display: flex;
+    gap: 8px;
+}
+
+.json-action-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.json-view-btn {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+}
+
+.json-view-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.json-delete-btn {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+}
+
+.json-delete-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* JSON Detail View Modal */
+.json-detail-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.json-detail-content {
+    background: white;
+    border-radius: 20px;
+    max-width: 1200px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.json-detail-header {
+    padding: 25px 30px;
+    border-bottom: 2px solid #e5e7eb;
+    background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+    border-radius: 20px 20px 0 0;
+}
+
+.json-detail-header h3 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 0 0 10px 0;
+}
+
+.json-detail-meta {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.json-detail-body {
+    padding: 30px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.json-data-section {
+    margin-bottom: 30px;
+}
+
+.json-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Flat Table for SQL Data */
+.json-flat-table {
+    width: 100%;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.json-flat-table th,
+.json-flat-table td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.json-flat-table th {
+    background: #f9fafb;
+    font-weight: 700;
+    color: var(--dark);
+    font-size: 13px;
+    text-transform: uppercase;
+}
+
+.json-flat-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+/* JSON Tree for NoSQL Data */
+.json-tree {
+    background: #1f2937;
+    color: #f9fafb;
+    padding: 20px;
+    border-radius: 12px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+    max-height: 500px;
+}
+
+.json-tree pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.json-comment-box {
+    background: #f0f9ff;
+    border-left: 4px solid #3b82f6;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.json-comment-box p {
+    margin: 0;
+    color: #1e40af;
+    font-size: 14px;
+}
+
+/* Empty State */
+.json-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #9ca3af;
+}
+
+.json-empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.json-empty-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 10px;
+}
+
+.json-empty-hint {
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+/* ========== JSON View Tabs ========== */
+.json-view-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e5e7eb;
+    background: #f9fafb;
+    padding: 10px;
+    border-radius: 8px 8px 0 0;
+    flex-shrink: 0;
+}
+
+.json-tab-btn {
+    padding: 12px 24px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.json-tab-btn:hover {
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.json-tab-btn.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.json-content-view {
+    display: none;
+    animation: fadeIn 0.3s ease;
+    width: 100%;
+    overflow: auto;
+    max-height: calc(95vh - 320px);
+}
+
+.json-content-view.active {
+    display: block;
+}
+
+/* ========== Enhanced JSON Table Styles ========== */
+.json-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 14px;
+    border: 2px solid #e5e7eb;
+    table-layout: auto;
+}
+
+.json-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.json-table thead th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    border-bottom: 3px solid #5568d3;
+}
+
+.json-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: background-color 0.2s ease;
+}
+
+.json-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.json-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.json-table tbody td {
+    padding: 12px 16px;
+    vertical-align: top;
+}
+
+.json-table .row-number {
+    background: #f3f4f6;
+    font-weight: 600;
+    color: #6b7280;
+    text-align: center;
+    width: 50px;
+}
+
+.json-table .field-name {
+    font-weight: 600;
+    color: #374151;
+    background: #f9fafb;
+    min-width: 150px;
+}
+
+/* ========== Data Type Styling ========== */
+.null-value {
+    color: #9ca3af;
+    font-style: italic;
+    font-weight: 600;
+}
+
+.boolean-value {
+    color: #8b5cf6;
+    font-weight: 600;
+}
+
+.number-value {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.string-value {
+    color: #059669;
+}
+
+.array-value {
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+.object-value {
+    color: #ec4899;
+    font-weight: 600;
+}
+
+/* ========== Details/Summary Styling ========== */
+details summary {
+    padding: 5px 0;
+    font-size: 13px;
+}
+
+details[open] summary {
+    margin-bottom: 8px;
+}
+
+details pre {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+details pre::-webkit-scrollbar {
+    width: 6px;
+}
+
+details pre::-webkit-scrollbar-track {
+    background: #e5e7eb;
+    border-radius: 3px;
+}
+
+details pre::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 3px;
+}
+
+details pre::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* ========== Responsive Table ========== */
+@media (max-width: 768px) {
+    .json-view-tabs {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .json-tab-btn {
+        width: 100%;
+        border-bottom: none;
+        border-left: 3px solid transparent;
+        text-align: left;
+    }
+    
+    .json-tab-btn.active {
+        border-bottom-color: transparent;
+        border-left-color: #667eea;
+    }
+    
+    .json-table {
+        font-size: 12px;
+    }
+    
+    .json-table thead th,
+    .json-table tbody td {
+        padding: 10px 12px;
     }
 }
 

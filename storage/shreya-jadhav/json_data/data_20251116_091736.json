@@ -1,0 +1,9 @@
+{
+  "student_id": 101,
+  "name": "Kumar Amityush",
+  "course": "Computer Science",
+  "semester": 5,
+  "cgpa": 8.7,
+  "email": "kamityush@gmail.com",
+  "phone": "9876543210"
+}

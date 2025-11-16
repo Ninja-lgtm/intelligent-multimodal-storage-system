@@ -1,0 +1,122 @@
+{
+  "Ninja": {
+    "password": "scrypt:32768:8:1$83M0MhW2nqoOras3$d697dc6b09ca6fd44d6e50e1f179b9136a500f98b11434b8f002b653eb9ac99c1cd246e558883088c8ed409fa232e1e944fd84fe7ef4bce87c5dee56a0d1a1a1",
+    "email": "kamityush@gmail.com",
+    "full_name": "Amityush",
+    "created_at": "2025-11-15T22:48:19.474245",
+    "uploads": {
+      "images": [
+        {
+          "filename": "20251115_225013_Mangekyo_Sharingan_-_3840x2160.png",
+          "comment": "",
+          "uploaded_at": "2025-11-15T22:50:13.985557"
+        },
+        {
+          "filename": "20251115_225014_Screenshot_2025-02-05_081522.jpg",
+          "comment": "",
+          "uploaded_at": "2025-11-15T22:50:14.004464"
+        },
+        {
+          "filename": "20251115_225014_Screenshot_2025-04-12_120332.png",
+          "comment": "",
+          "uploaded_at": "2025-11-15T22:50:14.019244"
+        },
+        {
+          "filename": "20251115_234004_Mangekyo_Sharingan_-_3840x2160.png",
+          "comment": "",
+          "uploaded_at": "2025-11-15T23:40:04.747931"
+        },
+        {
+          "filename": "20251115_234004_Screenshot_2025-02-05_081522.jpg",
+          "comment": "",
+          "uploaded_at": "2025-11-15T23:40:04.757863"
+        },
+        {
+          "filename": "20251115_234004_Screenshot_2025-04-12_120332.png",
+          "comment": "",
+          "uploaded_at": "2025-11-15T23:40:04.763909"
+        },
+        {
+          "filename": "20251115_234004_Screenshot_2025-08-24_000132.png",
+          "comment": "",
+          "uploaded_at": "2025-11-15T23:40:04.769443"
+        },
+        {
+          "filename": "20251115_234004_Screenshot_2025-09-22_161836.png",
+          "comment": "",
+          "uploaded_at": "2025-11-15T23:40:04.775114"
+        }
+      ],
+      "videos": [],
+      "json_data": [
+        {
+          "filename": "data_20251115_225130.json",
+          "storage_type": "nosql",
+          "comment": "",
+          "uploaded_at": "2025-11-15T22:51:30.407647"
+        },
+        {
+          "filename": "data_20251115_234035.json",
+          "storage_type": "nosql",
+          "comment": "",
+          "uploaded_at": "2025-11-15T23:40:35.455423"
+        },
+        {
+          "filename": "data_20251116_005702.json",
+          "storage_type": "nosql",
+          "comment": "",
+          "entry_id": 1,
+          "uploaded_at": "2025-11-16T00:57:02.666305"
+        },
+        {
+          "filename": "data_20251116_015845.json",
+          "storage_type": "nosql",
+          "comment": "",
+          "entry_id": 2,
+          "uploaded_at": "2025-11-16T01:58:45.604456"
+        },
+        {
+          "filename": "data_20251116_021339.json",
+          "storage_type": "nosql",
+          "comment": "",
+          "entry_id": 3,
+          "uploaded_at": "2025-11-16T02:13:39.264332"
+        },
+        {
+          "filename": "data_20251116_021509.json",
+          "storage_type": "sql",
+          "comment": "",
+          "entry_id": 4,
+          "uploaded_at": "2025-11-16T02:15:10.006423"
+        }
+      ]
+    }
+  },
+  "shreya-jadhav": {
+    "password": "scrypt:32768:8:1$uJkYmF6sjP7AaYrx$f5f5b00cabd1501d7186756f6c9d91ef9380981204f84d6c3fa965bb0f5059db99a72810f8ff544f4042ce8c27785f054ba098ba29249a34c59262cedb851365",
+    "email": "s.s.shreya.jadhav@gmail.com",
+    "full_name": "Shreya",
+    "created_at": "2025-11-16T09:09:29.821794",
+    "storage_location": "minio",
+    "uploads": {
+      "images": [
+        {
+          "filename": "20251116_090957_Screenshot_2025-02-05_081522.jpg",
+          "comment": "",
+          "uploaded_at": "2025-11-16T09:09:58.970196",
+          "storage": "minio",
+          "minio_path": "shreya-jadhav/images/20251116_090957_Screenshot_2025-02-05_081522.jpg"
+        },
+        {
+          "filename": "20251116_090959_Screenshot_2025-04-12_120332.png",
+          "comment": "",
+          "uploaded_at": "2025-11-16T09:09:59.321027",
+          "storage": "minio",
+          "minio_path": "shreya-jadhav/images/20251116_090959_Screenshot_2025-04-12_120332.png"
+        }
+      ],
+      "videos": [],
+      "json_data": []
+    }
+  }
+}
