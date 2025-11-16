@@ -245,7 +245,7 @@ start frontend\index.html
 
 ## 📝 Author
 
-**Kumar Amityush**  
+**Triple Threat**  
 College Project • November 2025
 
 ---

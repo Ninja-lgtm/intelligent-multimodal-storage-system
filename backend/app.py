@@ -9,7 +9,7 @@ Features:
 - Secure Password Hashing
 - Minio Cloud Storage Integration
 
-Author: Kumar Amityush
+Author: Triple Threat
 Date: November 2025
 """
 
