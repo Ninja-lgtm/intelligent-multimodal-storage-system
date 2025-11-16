@@ -8,6 +8,8 @@ A college project featuring a secure, multi-user storage system that automatical
 - **User Authentication** → Session-based login with password hashing
 - **Modal File Viewer** → In-page popup for viewing images, videos, PDFs, and JSON
 - **Multiple File Upload** → Upload multiple files at once with batch processing
+- **Dual-View JSON Viewer** → Switch between JSON Format and Table Format for better data visualization
+- **MinIO Cloud Storage** → Files stored in MinIO cloud server (play.min.io demo)
 
 ---
 
@@ -18,19 +20,22 @@ Multi-Modal Storage/
 ├── backend/
 │   ├── app.py              # Flask backend server
 │   ├── requirements.txt    # Python dependencies
-├── storage/            # Per-user storage folders
-│       └── {username}/
-│           ├── images/
-│           ├── videos/
-│           ├── pdfs/
-│           └── json_data/
+├── storage/            # Local storage backup (per-user folders)
+│   ├── users.json      # User database with file metadata
+│   └── {username}/
+│       ├── images/
+│       ├── videos/
+│       ├── pdfs/
+│       └── json_data/
 ├── frontend/
 │   ├── index.html          # Landing page
 │   ├── style.css           # Landing page styles
 │   ├── login.html          # Login/Registration page
 │   ├── login-style.css     # Login page styles
-│   ├── dashboard.html      # User dashboard
-│   └── dashboard-style.css # Dashboard styles
+│   ├── dashboard.html      # User dashboard with dual-view JSON viewer
+│   ├── dashboard-style.css # Dashboard styles
+│   ├── database.html       # JSON Database Explorer
+│   └── database-style.css  # Database page styles
 └── README.md              # This file
 ```
 
@@ -46,6 +51,12 @@ Open PowerShell in the `backend` folder and run:
 cd backend
 pip install -r requirements.txt
 ```
+
+**Dependencies installed:**
+- Flask 3.0.0 (Web framework)
+- flask-cors 4.0.0 (Cross-origin support)
+- Werkzeug 3.0.1 (Security utilities)
+- minio 7.2.18 (Cloud storage client)
 
 ### Step 2: Run the Backend Server
 
@@ -110,13 +121,20 @@ start frontend\index.html
 ### 3. **View Your Files:**
    - Click "🗂️ Retrieve Data" to see all your files
    - Files are organized by category (Images, Videos, PDFs, JSON)
-   - **Modal Popup Viewer**:
+   - **Enhanced Modal Popup Viewer**:
      - Click "👁️ View File" to open in-page popup modal
      - View images, videos, and PDFs without leaving the page
-     - See formatted JSON with syntax highlighting
+     - **Dual-View JSON Viewer** with tab switching:
+       - **📄 JSON Format**: Syntax-highlighted JSON with dark theme
+       - **📊 Table Format**: Beautiful tabular representation
+         - **SQL Data** (flat objects): 2-column Field/Value table
+         - **NoSQL Data** (arrays): Multi-column database-style table
+     - Color-coded data types (NULL, Boolean, Number, String, Array, Object)
      - PDFs displayed in embedded viewer
+     - Optimized modal sizing (95vh height, 1200px max-width)
      - Close with X button, Escape key, or click outside
    - Click "⬇️ Download" to save files locally
+   - **Cloud Storage**: Files automatically uploaded to MinIO cloud server
 
 ### 4. **Logout:**
    - Click the logout button to end your session securely
@@ -137,7 +155,13 @@ start frontend\index.html
 ✅ **Session Management** - Secure server-side sessions  
 
 ### UI/UX Features
-✅ **Modal Popup Viewer** - In-page file viewing with smooth animations  
+✅ **Enhanced Modal Popup Viewer** - Optimized sizing (95vh, 1200px) with overflow handling  
+✅ **Dual-View JSON Viewer** - Switch between JSON Format and Table Format with tabs  
+✅ **Smart Table Generation**:  
+   - SQL data → 2-column Field/Value table with row numbers  
+   - NoSQL data → Multi-column database-style table with headers  
+✅ **Color-Coded Data Types** - Visual differentiation (NULL, Boolean, Number, String, Array, Object)  
+✅ **Purple Gradient Tabs** - High-visibility active state with smooth transitions  
 ✅ **PDF Viewer** - Embedded PDF viewer in modal popup  
 ✅ **Batch Upload Results** - Visual summary of multi-file uploads  
 ✅ **Progress Tracking** - Real-time upload progress for multiple files  
@@ -146,14 +170,19 @@ start frontend\index.html
 ✅ **Modern UI** - Gradient backgrounds, glassmorphism effects  
 ✅ **Real-time Feedback** - Success/error messages with file-by-file status  
 ✅ **Keyboard Shortcuts** - ESC to close modal  
+✅ **JSON Database Explorer** - Separate page to browse all JSON files with filtering  
 
 ### Technical Features
+✅ **MinIO Cloud Storage** - Files stored in MinIO cloud server (play.min.io demo)  
+✅ **Hybrid Storage** - Cloud-first with local backup fallback  
+✅ **File Metadata Tracking** - users.json database with minio_path field  
 ✅ **CORS Enabled** - Frontend-backend communication  
-✅ **File Download** - Dedicated download endpoint  
+✅ **Dual Download Endpoints** - /storage (preview) and /download (download)  
 ✅ **Secure File Serving** - Uses absolute paths with send_file  
 ✅ **Body Scroll Lock** - No background scrolling when modal open  
 ✅ **Sequential Upload** - Multiple files uploaded one by one with error handling  
 ✅ **Mixed Result Handling** - Displays both successful and failed uploads  
+✅ **Extensive Logging** - Console debugging for file operations  
 
 ---
 
@@ -181,9 +210,11 @@ start frontend\index.html
 | `/logout` | POST | User logout (destroys session) |
 | `/upload` | POST | Upload file(s) or JSON data (authenticated, supports multiple files) |
 | `/retrieve` | GET | Get user's files list including PDFs (authenticated) |
-| `/storage/<user>/<folder>/<file>` | GET | View file in browser (images, videos, PDFs, JSON) |
-| `/download/<user>/<folder>/<file>` | GET | Download file |
+| `/storage/<user>/<folder>/<file>` | GET | View/preview file in browser (cloud-first with local fallback) |
+| `/download/<user>/<folder>/<file>` | GET | Download file with proper attachment headers |
 | `/dashboard-stats` | GET | Get user statistics (file counts) |
+| `/json-database` | GET | Get all JSON files for database explorer (authenticated) |
+| `/json-database/<id>` | GET | Get specific JSON entry details |
 | `/health` | GET | Health check |
 
 ---
@@ -195,7 +226,9 @@ start frontend\index.html
 - **CORS**: flask-cors 4.0.0
 - **Security**: Werkzeug 3.0.1 (password hashing)
 - **Sessions**: Flask server-side sessions
+- **Cloud Storage**: MinIO 7.2.18 (play.min.io demo server)
 - **File Handling**: send_file with MIME type detection
+- **Database**: users.json (JSON-based file metadata storage)
 
 ### Frontend
 - **HTML5**: Semantic markup
@@ -249,6 +282,18 @@ College Project • November 2025
 ### Issue: PDF not displaying in modal
 **Solution**: Ensure browser allows embedded PDFs, try downloading if viewer doesn't load
 
+### Issue: Table view not showing for JSON
+**Solution**: Hard refresh browser (Ctrl+Shift+R), clear cache, check console for errors
+
+### Issue: Modal content overflowing/not fitting
+**Solution**: New modal sizing applied (95vh, 1200px), hard refresh to load updated CSS
+
+### Issue: Can't preview old uploaded files
+**Solution**: Old files stored locally, new files in MinIO cloud - backend has fallback logic
+
+### Issue: MinIO connection errors
+**Solution**: Using public demo server (play.min.io), check internet connection
+
 ---
 
 ## 📌 Important Notes
@@ -268,6 +313,11 @@ College Project • November 2025
    - Data: JSON
 10. **Modal Viewer**: View files in-page without opening new tabs
 11. **Batch Processing**: Upload multiple files with individual success/error tracking
+12. **Dual-View JSON Viewer**: Switch between JSON Format (📄) and Table Format (📊)
+13. **MinIO Cloud Storage**: Files automatically uploaded to cloud (bucket: intelligent-storage)
+14. **Hybrid Storage**: New files in cloud, old files local, seamless fallback
+15. **Enhanced Modal Sizing**: 95vh height, 1200px width, optimized for tables
+16. **JSON Database Explorer**: Browse all JSON files at `/json-database` endpoint
 
 ---
 
@@ -290,6 +340,12 @@ This project demonstrates:
 - Responsive web design (2x2 grid, flexbox, CSS grid)
 - **Error handling** for individual files in batch uploads
 - **Progress tracking** for multiple simultaneous operations
+- **Advanced JSON visualization** with dual-view (JSON/Table format)
+- **Cloud storage integration** (MinIO object storage)
+- **Hybrid storage architecture** (cloud-first with local fallback)
+- **Dynamic table generation** from JSON data (SQL vs NoSQL)
+- **Type-aware rendering** (color-coded data types)
+- **Metadata tracking** with users.json database
 
 ---
 
